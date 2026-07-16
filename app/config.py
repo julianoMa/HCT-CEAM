@@ -1,8 +1,15 @@
 import os
+from datetime import timedelta
 
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+    # Durée de connexion : combien de temps une personne reste connectée
+    # sans avoir à se reconnecter via Discord (par défaut 30 jours).
+    REMEMBER_COOKIE_DURATION = timedelta(days=int(os.environ.get("REMEMBER_COOKIE_DAYS", 30)))
+    PERMANENT_SESSION_LIFETIME = timedelta(days=int(os.environ.get("REMEMBER_COOKIE_DAYS", 30)))
+    REMEMBER_COOKIE_HTTPONLY = True
 
     # Chemin vers le fichier de clé de compte de service Firebase (JSON),
     # utilisé en local uniquement.

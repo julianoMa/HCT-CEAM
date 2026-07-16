@@ -2,7 +2,7 @@ import re
 from urllib.parse import urlencode
 
 import requests
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required, login_user, logout_user
 
 from app.auth.discord import exchange_code_for_token, fetch_discord_user, fetch_guild_member
@@ -81,7 +81,8 @@ def callback():
         # Garde le pseudo à jour si la personne a changé de pseudo sur le serveur.
         user.update_name(name)
 
-    login_user(user)
+    login_user(user, remember=True)
+    session.permanent = True
     flash(f"Connecté en tant que {user.name}.", "success")
     return redirect(url_for("ceam.mes_dossiers"))
 
