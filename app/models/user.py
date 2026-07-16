@@ -77,5 +77,10 @@ class User(UserMixin):
         db.collection(COLLECTION).document(str(self.id)).update({"role": new_role})
         self.role = new_role
 
+    def update_name(self, new_name):
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"name": new_name})
+        self.name = new_name
+
     def __repr__(self):
         return f"<User {self.name} ({self.role_label})>"

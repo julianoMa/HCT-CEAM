@@ -20,7 +20,7 @@ def exchange_code_for_token(code):
 
 
 def fetch_discord_user(access_token):
-    """Récupère le profil Discord de l'utilisateur connecté."""
+    """Récupère le profil Discord (compte) de l'utilisateur connecté."""
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
         f"{current_app.config['DISCORD_API_BASE_URL']}/users/@me",
@@ -31,14 +31,19 @@ def fetch_discord_user(access_token):
     return response.json()
 
 
-def is_member_of_guild(access_token, guild_id):
-    """Vérifie que l'utilisateur est toujours membre du serveur Discord HCT."""
+def fetch_guild_member(access_token, guild_id):
+    """Récupère le profil de membre sur le serveur HCT (contient le pseudo
+    serveur `nick`, distinct du pseudo global du compte Discord).
+
+    Lève requests.HTTPError avec un status_code 404 si la personne n'est
+    pas membre du serveur.
+    Nécessite le scope OAuth2 `guilds.members.read`.
+    """
     headers = {"Authorization": f"Bearer {access_token}"}
     response = requests.get(
-        f"{current_app.config['DISCORD_API_BASE_URL']}/users/@me/guilds",
+        f"{current_app.config['DISCORD_API_BASE_URL']}/users/@me/guilds/{guild_id}/member",
         headers=headers,
         timeout=10,
     )
     response.raise_for_status()
-    guild_ids = {g["id"] for g in response.json()}
-    return str(guild_id) in guild_ids
+    return response.json()
