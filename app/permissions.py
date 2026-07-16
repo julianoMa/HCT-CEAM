@@ -1,23 +1,45 @@
-from functools import wraps
+import json
 
-from flask import abort
-from flask_login import current_user
+import firebase_admin
+from firebase_admin import credentials, firestore
+from flask_login import LoginManager
+from flask_wtf import CSRFProtect
+
+login_manager = LoginManager()
+csrf = CSRFProtect()
+
+login_manager.login_view = "auth.login"
+login_manager.login_message = "Merci de te connecter avec Discord pour accéder à cette page."
+
+_firestore_client = None
 
 
-def requires_role(min_role):
-    """Bloque l'accès si l'utilisateur n'est pas connecté ou si son rôle
-    est strictement inférieur à min_role (0=Déclarant, 1=Membre CEAM,
-    2=Président CEAM, 3=Administrateur)."""
+def init_firestore(app):
+    """Initialise l'app Firebase Admin et le client Firestore, une seule fois.
 
-    def decorator(view):
-        @wraps(view)
-        def wrapped(*args, **kwargs):
-            if not current_user.is_authenticated:
-                abort(401)
-            if current_user.role < min_role:
-                abort(403)
-            return view(*args, **kwargs)
+    En local : lit le fichier de clé de compte de service désigné par
+    FIREBASE_CREDENTIALS_PATH.
+    En production (Vercel, etc., sans disque persistant) : lit le JSON
+    complet de la clé directement depuis la variable d'environnement
+    FIREBASE_CREDENTIALS_JSON.
+    """
+    global _firestore_client
 
-        return wrapped
+    if not firebase_admin._apps:
+        cred_json = app.config.get("FIREBASE_CREDENTIALS_JSON")
+        if cred_json:
+            cred = credentials.Certificate(json.loads(cred_json))
+        else:
+            cred_path = app.config["FIREBASE_CREDENTIALS_PATH"]
+            cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
 
-    return decorator
+    _firestore_client = firestore.client()
+    return _firestore_client
+
+
+def get_db():
+    """Retourne le client Firestore courant (à appeler après init_firestore)."""
+    if _firestore_client is None:
+        raise RuntimeError("Firestore n'est pas initialisé. Appelle init_firestore(app) au démarrage.")
+    return _firestore_client
