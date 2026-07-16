@@ -76,6 +76,10 @@ def detail(rapport_id):
     is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
     if not is_owner and not is_ceam_member:
         abort(403)
+    # Un dossier archivé n'est plus visible par le déclarant, même par lien
+    # direct (seule la commission continue d'y avoir accès, via Archives).
+    if rapport.archived and not is_ceam_member:
+        abort(403)
 
     instruction_form = None
     reponse_form = None
@@ -113,6 +117,31 @@ def detail(rapport_id):
         reponse_form=reponse_form,
         is_ceam_member=is_ceam_member,
     )
+
+
+@bp.route("/dossier/<int:rapport_id>/archiver", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_PRESIDENT_CEAM)
+def archiver(rapport_id):
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+    rapport.archive()
+    flash(f"Dossier {rapport.reference} archivé. Il n'est plus visible par le déclarant.", "success")
+    return redirect(request.referrer or url_for("ceam.suivi"))
+
+
+@bp.route("/dossier/<int:rapport_id>/supprimer", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_ADMIN)
+def supprimer(rapport_id):
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+    reference = rapport.reference
+    Rapport.delete(rapport_id)
+    flash(f"Dossier {reference} supprimé définitivement.", "success")
+    return redirect(url_for("ceam.archives"))
 
 
 @bp.route("/statistiques")

@@ -113,6 +113,17 @@
   </div>
   {% endif %}
 
+  <div class="modal-overlay" id="confirm-modal" aria-hidden="true">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <h2 id="confirm-modal-title" class="modal__title">Confirmer la suppression</h2>
+      <p class="modal__text" id="confirm-modal-text"></p>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" id="confirm-modal-cancel">Annuler</button>
+        <button type="button" class="btn-danger" id="confirm-modal-confirm">Supprimer définitivement</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

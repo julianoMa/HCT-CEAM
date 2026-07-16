@@ -53,7 +53,7 @@ class Rapport:
     def __init__(self, id, plaignant_last_name, plaignant_first_name, plaignant_affectation, plaignant_rank,
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, witness, description, proof,
-                 send_date, owner_id, status, note, reponses=None):
+                 send_date, owner_id, status, note, reponses=None, archived=False):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -76,6 +76,10 @@ class Rapport:
         # dicts {type, content, author_name, author_rank, sent_at}.
         # Remplace l'ancien champ unique `conclusion`.
         self.reponses = reponses or []
+        # Archivage : indépendant du statut. Un dossier clôturé (status =
+        # STATUS_CLOTURE) reste visible par le déclarant tant qu'il n'a pas
+        # été explicitement archivé par le président CEAM.
+        self.archived = archived
 
     # --- Confort d'affichage ---
     @property
@@ -141,6 +145,7 @@ class Rapport:
             "status": self.status,
             "note": self.note,
             "reponses": self.reponses,
+            "archived": self.archived,
         }
 
     @classmethod
@@ -150,6 +155,7 @@ class Rapport:
         # ignoré s'il traîne encore sur d'anciens documents Firestore.
         data.pop("conclusion", None)
         data.setdefault("reponses", [])
+        data.setdefault("archived", False)
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -193,14 +199,21 @@ class Rapport:
     @classmethod
     def query_by_owner(cls, owner_id):
         db = get_db()
-        docs = db.collection(COLLECTION).where(filter=FieldFilter("owner_id", "==", owner_id)).stream()
+        docs = (
+            db.collection(COLLECTION)
+            .where(filter=FieldFilter("owner_id", "==", owner_id))
+            .where(filter=FieldFilter("archived", "==", False))
+            .stream()
+        )
         return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
 
     @classmethod
     def query_open(cls, status_filter=None):
-        """Dossiers non clôturés (ou d'un statut précis si status_filter est fourni)."""
+        """Dossiers non archivés (statut ouvert par défaut, ou d'un statut
+        précis si status_filter est fourni). Un dossier archivé n'apparaît
+        plus ici, quel que soit son statut."""
         db = get_db()
-        query = db.collection(COLLECTION)
+        query = db.collection(COLLECTION).where(filter=FieldFilter("archived", "==", False))
         if status_filter is not None:
             query = query.where(filter=FieldFilter("status", "==", status_filter))
         else:
@@ -210,10 +223,11 @@ class Rapport:
 
     @classmethod
     def query_archived(cls):
+        """Dossiers archivés par le président CEAM (indépendant du statut)."""
         db = get_db()
         docs = (
             db.collection(COLLECTION)
-            .where(filter=FieldFilter("status", "==", cls.STATUS_CLOTURE))
+            .where(filter=FieldFilter("archived", "==", True))
             .stream()
         )
         return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
@@ -254,6 +268,19 @@ class Rapport:
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
         self.reponses = reponses
         return reponse
+
+    def archive(self):
+        """Archive le dossier : il disparaît des vues du déclarant et du
+        Suivi CEAM, et n'est plus visible que dans Archives."""
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"archived": True})
+        self.archived = True
+
+    @classmethod
+    def delete(cls, rapport_id):
+        """Supprime définitivement un dossier (irréversible)."""
+        db = get_db()
+        db.collection(COLLECTION).document(str(rapport_id)).delete()
 
     def __repr__(self):
         return f"<Rapport {self.reference} ({self.status_label})>"

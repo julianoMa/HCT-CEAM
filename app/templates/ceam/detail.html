@@ -11,6 +11,14 @@
   {{ status_badge(rapport.status, rapport.status_label) }}
 {% endcall %}
 
+{% if rapport.archived %}
+<div class="card card--padded" style="margin-bottom: 1rem; background: var(--warning-bg); border-color: var(--warning-border);">
+  <p style="margin: 0; color: var(--warning-text); font-weight: 600; font-size: 13px;">
+    Ce dossier est archivé — il n'est plus visible par le déclarant.
+  </p>
+</div>
+{% endif %}
+
 <div class="card-grid">
   <div class="info-card">
     <p class="info-card__label">Plaignant</p>
@@ -37,7 +45,7 @@
   <div class="prose"><p>{{ rapport.description }}</p></div>
   {% if rapport.proof %}
   <p class="prose-label" style="margin-top: 1rem;">Preuve(s)</p>
-  <div class="prose"><p>{{ rapport.proof }}</p></div>
+  <div class="prose rich-text">{{ rapport.proof | rich_text }}</div>
   {% endif %}
 </div>
 
@@ -81,7 +89,7 @@
         <span class="badge-type">{{ r.type_label }}</span>
         <span class="reponse-item__meta">{{ r.author_name }} — {{ r.author_rank }} · {{ r.sent_at_fr }}</span>
       </div>
-      <div class="prose"><p>{{ r.content }}</p></div>
+      <div class="prose rich-text">{{ r.content | rich_text }}</div>
     </div>
     {% endfor %}
   </div>
@@ -110,6 +118,28 @@
     <button type="submit">Envoyer la réponse</button>
   </div>
 </form>
+{% endif %}
+
+{% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
+{% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
+{% if can_archive or can_delete %}
+<div class="card card--padded" style="margin-top: 1rem;">
+  <p class="prose-label">Administration du dossier</p>
+  <div class="detail-admin-actions">
+    {% if can_archive %}
+    <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-secondary">Archiver ce dossier</button>
+    </form>
+    {% endif %}
+    {% if can_delete %}
+    <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=rapport.id) }}" data-delete-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="button" class="btn-danger" data-confirm-delete data-reference="{{ rapport.reference }}">Supprimer définitivement</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
 {% endif %}
 
 <div class="detail-meta">

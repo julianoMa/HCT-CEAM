@@ -1,5 +1,7 @@
 {% from "macros/ui.html" import status_badge, empty_state %}
 
+{% set show_actions = list_context in ("suivi", "archives") %}
+
 <div class="table-wrap">
   <table class="data-table">
     <thead>
@@ -9,6 +11,7 @@
         <th>Concerné</th>
         <th>Date événement</th>
         <th>Statut</th>
+        {% if show_actions %}<th>Actions</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -21,10 +24,29 @@
         <td>{{ r.concerne_first_name }} {{ r.concerne_last_name }}</td>
         <td class="data-table__muted">{{ r.event_date_fr }}</td>
         <td>{{ status_badge(r.status, r.status_label) }}</td>
+        {% if list_context == "suivi" %}
+        <td>
+          {% if current_user.role >= current_user.ROLE_PRESIDENT_CEAM %}
+          <form method="post" action="{{ url_for('ceam.archiver', rapport_id=r.id) }}" class="form-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-secondary btn-sm">Archiver</button>
+          </form>
+          {% endif %}
+        </td>
+        {% elif list_context == "archives" %}
+        <td>
+          {% if current_user.role >= current_user.ROLE_ADMIN %}
+          <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=r.id) }}" class="form-inline" data-delete-form>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="button" class="btn-danger btn-sm" data-confirm-delete data-reference="{{ r.reference }}">Supprimer</button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
       </tr>
       {% else %}
       <tr>
-        <td colspan="5">
+        <td colspan="{{ 6 if show_actions else 5 }}">
           {{ empty_state(
             "Aucun dossier pour le moment",
             "Tu n'as pas encore déposé de rapport. Commence par remplir le formulaire de dépôt.",

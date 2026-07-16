@@ -3,6 +3,7 @@ from flask import Flask
 
 from app.config import Config
 from app.extensions import csrf, init_firestore, login_manager
+from app.rich_text import render_rich_text
 
 load_dotenv()
 
@@ -14,6 +15,8 @@ def create_app(config_class=Config):
     init_firestore(app)
     login_manager.init_app(app)
     csrf.init_app(app)
+
+    app.jinja_env.filters["rich_text"] = render_rich_text
 
     from app.models.user import User
 

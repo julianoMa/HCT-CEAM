@@ -2,9 +2,10 @@
 
 {% extends "base.html" %}
 {% block content %}
-{% call page_header("Commission", "Archives", "Dossiers clôturés par la commission.") %}{% endcall %}
+{% call page_header("Commission", "Archives", "Dossiers archivés par la commission — non visibles par les déclarants.") %}{% endcall %}
 
 <div class="card">
+  {% set list_context = "archives" %}
   {% include "ceam/_liste_dossiers.html" %}
 </div>
 {% endblock %}
