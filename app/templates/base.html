@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEAM{% if title %} — {{ title }}{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container" aria-live="polite">
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}" data-auto-dismiss role="alert">
+        <span>{{ message }}</span>
+        <button type="button" class="flash__close" aria-label="Fermer">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  {% if current_user.is_authenticated %}
+  <div class="app-shell">
+    <div class="sidebar-overlay" aria-hidden="true"></div>
+
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__logo">CE</div>
+        <div class="sidebar__brand-text">
+          <span class="sidebar__brand-name">CEAM</span>
+          <span class="sidebar__brand-tagline">Éthique médicale HCT</span>
+        </div>
+      </div>
+
+      <nav class="sidebar__nav">
+        <span class="sidebar__section-label">Espace déclarant</span>
+        <a href="{{ url_for('ceam.depot') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.depot' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Dépôt
+        </a>
+        <a href="{{ url_for('ceam.mes_dossiers') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.mes_dossiers' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Mes dossiers
+        </a>
+
+        {% if current_user.role >= 1 %}
+        <span class="sidebar__section-label">Commission</span>
+        <a href="{{ url_for('ceam.suivi') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.suivi' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Suivi CEAM
+        </a>
+        <a href="{{ url_for('ceam.archives') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.archives' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+          Archives
+        </a>
+        <a href="{{ url_for('ceam.statistiques') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.statistiques' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Statistiques
+        </a>
+        {% endif %}
+
+        {% if current_user.role >= 3 %}
+        <span class="sidebar__section-label">Administration</span>
+        <a href="{{ url_for('admin.utilisateurs') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.utilisateurs' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          Utilisateurs
+        </a>
+        {% endif %}
+      </nav>
+
+      <div class="sidebar__user">
+        <div class="sidebar__user-card">
+          <div class="sidebar__avatar">{{ current_user.name[0]|upper }}</div>
+          <div class="sidebar__user-info">
+            <div class="sidebar__user-name">{{ current_user.name }}</div>
+            <div class="sidebar__user-role">{{ current_user.role_label }}</div>
+          </div>
+          <a href="{{ url_for('auth.logout') }}" class="sidebar__logout" title="Se déconnecter">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button type="button" class="topbar__menu" data-sidebar-toggle aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <span class="topbar__title">CEAM</span>
+      </header>
+
+      <div class="main__content">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="auth-layout">
+    {% block auth_content %}
+    <div class="auth-card">
+      <div class="auth-card__logo">CE</div>
+      <h1>CEAM</h1>
+      <p>Commission d'éthique des affaires médicales — connecte-toi avec Discord pour accéder à la plateforme.</p>
+      <a href="{{ url_for('auth.login') }}" class="btn-discord">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.664-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+        Se connecter avec Discord
+      </a>
+    </div>
+    {% endblock %}
+  </div>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

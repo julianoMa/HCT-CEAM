@@ -1,0 +1,17 @@
+{% from "macros/ui.html" import page_header %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Commission", "Suivi CEAM", "Dossiers en cours d'instruction par la commission.") %}{% endcall %}
+
+<div class="filter-bar">
+  <a class="filter-chip {{ 'is-active' if status_filter is none }}" href="{{ url_for('ceam.suivi') }}">Tous</a>
+  {% for value, label in status_labels.items() %}
+  <a class="filter-chip {{ 'is-active' if status_filter == value }}" href="{{ url_for('ceam.suivi', status=value) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  {% include "ceam/_liste_dossiers.html" %}
+</div>
+{% endblock %}

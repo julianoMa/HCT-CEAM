@@ -1,0 +1,39 @@
+{% from "macros/ui.html" import status_badge, empty_state %}
+
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Référence</th>
+        <th>Plaignant</th>
+        <th>Concerné</th>
+        <th>Date événement</th>
+        <th>Statut</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rapports %}
+      <tr>
+        <td>
+          <a href="{{ url_for('ceam.detail', rapport_id=r.id) }}" class="data-table__link">{{ r.reference }}</a>
+        </td>
+        <td>{{ r.plaignant_first_name }} {{ r.plaignant_last_name }}</td>
+        <td>{{ r.concerne_first_name }} {{ r.concerne_last_name }}</td>
+        <td class="data-table__muted">{{ r.event_date_fr }}</td>
+        <td>{{ status_badge(r.status, r.status_label) }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5">
+          {{ empty_state(
+            "Aucun dossier pour le moment",
+            "Tu n'as pas encore déposé de rapport. Commence par remplir le formulaire de dépôt.",
+            url_for('ceam.depot'),
+            "Déposer un rapport"
+          ) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

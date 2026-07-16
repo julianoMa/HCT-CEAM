@@ -1,0 +1,63 @@
+{% from "macros/ui.html" import page_header %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Espace déclarant", "Déposer un rapport", "Remplis le formulaire ci-dessous pour soumettre un incident à la commission.") %}{% endcall %}
+
+<form method="post" class="form-card">
+  {{ form.hidden_tag() }}
+
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </span>
+      Plaignant
+    </h2>
+    <div class="form-grid">
+      <div class="form-group">{{ form.plaignant_last_name.label }}{{ form.plaignant_last_name() }}</div>
+      <div class="form-group">{{ form.plaignant_first_name.label }}{{ form.plaignant_first_name() }}</div>
+      <div class="form-group">{{ form.plaignant_affectation.label }}{{ form.plaignant_affectation() }}</div>
+      <div class="form-group">{{ form.plaignant_rank.label }}{{ form.plaignant_rank() }}</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+      </span>
+      Personne concernée
+    </h2>
+    <div class="form-grid">
+      <div class="form-group">{{ form.concerne_last_name.label }}{{ form.concerne_last_name() }}</div>
+      <div class="form-group">{{ form.concerne_first_name.label }}{{ form.concerne_first_name() }}</div>
+      <div class="form-group">{{ form.concerne_affectation.label }}{{ form.concerne_affectation() }}</div>
+      <div class="form-group">{{ form.concerne_rank.label }}{{ form.concerne_rank() }}</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      </span>
+      Description de l'événement
+    </h2>
+    <div class="form-grid">
+      <div class="form-group">{{ form.event_date.label }}{{ form.event_date() }}</div>
+      <div class="form-group">{{ form.event_hour.label }}{{ form.event_hour() }}</div>
+      <div class="form-group form-group--full">{{ form.witness.label }}{{ form.witness(placeholder="Nom(s) des témoins éventuels…") }}</div>
+      <div class="form-group form-group--full">{{ form.description.label }}{{ form.description(placeholder="Décris les faits de manière détaillée et objective…") }}</div>
+      <div class="form-group form-group--full">{{ form.proof.label }}{{ form.proof(placeholder="Liens vers vidéos, photos ou autres preuves…") }}</div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      Envoyer le rapport
+    </button>
+  </div>
+</form>
+{% endblock %}

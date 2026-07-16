@@ -1,0 +1,42 @@
+{% from "macros/ui.html" import page_header %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Administration", "Utilisateurs", "Gère les rôles et permissions des membres.") %}{% endcall %}
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Utilisateur</th>
+          <th>Discord ID</th>
+          <th>Rôle actuel</th>
+          <th>Modifier</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <strong>{{ u.name }}</strong>
+          </td>
+          <td><code class="data-table__muted">{{ u.discord_id }}</code></td>
+          <td>{{ u.role_label }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.changer_role', user_id=u.id) }}" class="form-inline">
+              <select name="role">
+                {% for value, label in role_labels.items() %}
+                <option value="{{ value }}" {{ "selected" if u.role == value }}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn-secondary">Mettre à jour</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

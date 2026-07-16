@@ -1,0 +1,19 @@
+{% from "macros/ui.html" import page_header %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Commission", "Statistiques", "Vue d'ensemble de l'activité de la commission.") %}{% endcall %}
+
+<div class="metrics">
+  <div class="metric metric--highlight">
+    <p class="metric__label">Total des dossiers</p>
+    <p class="metric__value">{{ total }}</p>
+  </div>
+  {% for label, count in counts.items() %}
+  <div class="metric">
+    <p class="metric__label">{{ label }}</p>
+    <p class="metric__value">{{ count }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

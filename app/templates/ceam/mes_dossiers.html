@@ -1,0 +1,15 @@
+{% from "macros/ui.html" import page_header, empty_state %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Espace déclarant", "Mes dossiers", "Consulte l'état de tes rapports déposés auprès de la commission.") %}
+  <a href="{{ url_for('ceam.depot') }}" class="btn btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Nouveau rapport
+  </a>
+{% endcall %}
+
+<div class="card">
+  {% include "ceam/_liste_dossiers.html" %}
+</div>
+{% endblock %}

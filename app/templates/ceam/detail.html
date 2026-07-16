@@ -1,0 +1,79 @@
+{% from "macros/ui.html" import page_header, status_badge %}
+
+{% extends "base.html" %}
+{% block content %}
+<a href="{{ url_for('ceam.mes_dossiers') }}" class="back-link">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  Retour aux dossiers
+</a>
+
+{% call page_header(rapport.reference, rapport.plaignant_first_name ~ " " ~ rapport.plaignant_last_name ~ " c/ " ~ rapport.concerne_first_name ~ " " ~ rapport.concerne_last_name) %}
+  {{ status_badge(rapport.status, rapport.status_label) }}
+{% endcall %}
+
+<div class="card-grid">
+  <div class="info-card">
+    <p class="info-card__label">Plaignant</p>
+    <p class="info-card__name">{{ rapport.plaignant_first_name }} {{ rapport.plaignant_last_name }}</p>
+    <p class="info-card__meta">{{ rapport.plaignant_rank }} — {{ rapport.plaignant_affectation }}</p>
+  </div>
+  <div class="info-card">
+    <p class="info-card__label">Personne concernée</p>
+    <p class="info-card__name">{{ rapport.concerne_first_name }} {{ rapport.concerne_last_name }}</p>
+    <p class="info-card__meta">{{ rapport.concerne_rank }} — {{ rapport.concerne_affectation }}</p>
+  </div>
+</div>
+
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <p class="prose-label">Événement</p>
+  <p class="info-card__meta" style="margin-bottom: 1rem;">
+    {{ rapport.event_date_fr }} à {{ rapport.event_hour }}
+  </p>
+  {% if rapport.witness %}
+  <p class="prose-label">Témoin(s)</p>
+  <div class="prose"><p>{{ rapport.witness }}</p></div>
+  {% endif %}
+  <p class="prose-label" style="margin-top: 1rem;">Description</p>
+  <div class="prose"><p>{{ rapport.description }}</p></div>
+  {% if rapport.proof %}
+  <p class="prose-label" style="margin-top: 1rem;">Preuve(s)</p>
+  <div class="prose"><p>{{ rapport.proof }}</p></div>
+  {% endif %}
+</div>
+
+{% if is_ceam_member %}
+<form method="post" class="form-card">
+  {{ form.hidden_tag() }}
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </span>
+      Suivi interne CEAM
+    </h2>
+    <div class="form-grid form-grid--single">
+      <div class="form-group">{{ form.status.label }}{{ form.status() }}</div>
+      <div class="form-group">{{ form.note.label }}{{ form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
+      <div class="form-group">{{ form.conclusion.label }}{{ form.conclusion(placeholder="Réponse officielle transmise au plaignant…") }}</div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit">Enregistrer les modifications</button>
+  </div>
+</form>
+{% else %}
+<div class="card card--padded">
+  <p class="prose-label">Statut du dossier</p>
+  <p style="margin: 0 0 1rem;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
+  {% if rapport.conclusion %}
+  <p class="prose-label">Réponse officielle</p>
+  <div class="prose"><p>{{ rapport.conclusion }}</p></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="detail-meta">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+  Déposé le {{ rapport.send_date_fr }}
+</div>
+{% endblock %}
