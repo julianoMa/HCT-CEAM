@@ -30,6 +30,7 @@
                 <option value="{{ value }}" {{ "selected" if u.role == value }}>{{ label }}</option>
                 {% endfor %}
               </select>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn-secondary">Mettre à jour</button>
             </form>
           </td>
