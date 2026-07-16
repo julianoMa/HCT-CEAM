@@ -305,8 +305,8 @@ a:hover { color: var(--accent-hover); }
   flex: 1;
   padding: 2rem 2.5rem;
   max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
+  margin: 0 auto;
 }
 
 /* ── Auth layout (non connecté) ── */
@@ -963,6 +963,47 @@ button, .btn {
 }
 
 /* ── Detail page ── */
+
+/* ── Historique des réponses officielles ── */
+
+.reponse-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reponse-item {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--border-subtle);
+}
+
+.reponse-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.reponse-item__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.badge-type {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 
 .detail-meta {
   display: flex;

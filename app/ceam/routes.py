@@ -1,7 +1,7 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from app.ceam.forms import InstructionForm, RapportForm
+from app.ceam.forms import InstructionForm, RapportForm, ReponseForm
 from app.models.ceam import Rapport
 from app.models.user import User
 from app.permissions import requires_role
@@ -77,21 +77,42 @@ def detail(rapport_id):
     if not is_owner and not is_ceam_member:
         abort(403)
 
-    form = None
-    if is_ceam_member:
-        form = InstructionForm(status=rapport.status, note=rapport.note, conclusion=rapport.conclusion)
-        form.status.choices = list(Rapport.STATUS_LABELS.items())
+    instruction_form = None
+    reponse_form = None
 
-        if form.validate_on_submit():
+    if is_ceam_member:
+        instruction_form = InstructionForm(status=rapport.status, note=rapport.note)
+        instruction_form.status.choices = list(Rapport.STATUS_LABELS.items())
+        reponse_form = ReponseForm()
+
+        action = request.form.get("action")
+
+        if action == "instruction" and instruction_form.validate_on_submit():
             can_close = current_user.role >= User.ROLE_PRESIDENT_CEAM
-            if form.status.data == Rapport.STATUS_CLOTURE and not can_close:
+            if instruction_form.status.data == Rapport.STATUS_CLOTURE and not can_close:
                 flash("Seul le président CEAM peut clôturer un dossier.", "danger")
             else:
-                rapport.update_instruction(form.status.data, form.note.data, form.conclusion.data)
-                flash("Dossier mis à jour.", "success")
+                rapport.update_instruction(instruction_form.status.data, instruction_form.note.data)
+                flash("Suivi interne mis à jour.", "success")
             return redirect(url_for("ceam.detail", rapport_id=rapport.id))
 
-    return render_template("ceam/detail.html", rapport=rapport, form=form, is_ceam_member=is_ceam_member)
+        if action == "reponse" and reponse_form.validate_on_submit():
+            rapport.add_reponse(
+                type_=reponse_form.type.data,
+                content=reponse_form.content.data,
+                author_name=current_user.name,
+                author_rank=current_user.role_label,
+            )
+            flash("Réponse envoyée et ajoutée à l'historique du dossier.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id))
+
+    return render_template(
+        "ceam/detail.html",
+        rapport=rapport,
+        instruction_form=instruction_form,
+        reponse_form=reponse_form,
+        is_ceam_member=is_ceam_member,
+    )
 
 
 @bp.route("/statistiques")

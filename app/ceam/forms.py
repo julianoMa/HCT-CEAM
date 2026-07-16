@@ -29,6 +29,14 @@ class RapportForm(FlaskForm):
 
 
 class InstructionForm(FlaskForm):
+    """Suivi interne du dossier (statut + note), réservé à la commission.
+    Ne contient plus de champ de réponse : voir ReponseForm."""
     status = SelectField("Statut", coerce=int)
     note = TextAreaField("Note interne", validators=[Optional()])
-    conclusion = TextAreaField("Réponse officielle", validators=[Optional()])
+
+
+class ReponseForm(FlaskForm):
+    """Envoi d'une nouvelle réponse officielle, ajoutée à l'historique du
+    dossier et visible par le plaignant."""
+    type = StringField("Type de réponse", validators=[DataRequired(), Length(max=100)])
+    content = TextAreaField("Contenu de la réponse", validators=[DataRequired()])

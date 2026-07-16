@@ -41,9 +41,11 @@
   {% endif %}
 </div>
 
+<!-- Suivi interne CEAM : statut + note, réservé à la commission -->
 {% if is_ceam_member %}
-<form method="post" class="form-card">
-  {{ form.hidden_tag() }}
+<form method="post" class="form-card" style="margin-bottom: 1rem;">
+  {{ instruction_form.hidden_tag() }}
+  <input type="hidden" name="action" value="instruction">
   <div class="form-section">
     <h2 class="form-section__title">
       <span class="form-section__icon">
@@ -52,24 +54,62 @@
       Suivi interne CEAM
     </h2>
     <div class="form-grid form-grid--single">
-      <div class="form-group">{{ form.status.label }}{{ form.status() }}</div>
-      <div class="form-group">{{ form.note.label }}{{ form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
-      <div class="form-group">{{ form.conclusion.label }}{{ form.conclusion(placeholder="Réponse officielle transmise au plaignant…") }}</div>
+      <div class="form-group">{{ instruction_form.status.label }}{{ instruction_form.status() }}</div>
+      <div class="form-group">{{ instruction_form.note.label }}{{ instruction_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
     </div>
   </div>
   <div class="form-actions">
-    <button type="submit">Enregistrer les modifications</button>
+    <button type="submit">Enregistrer le suivi interne</button>
   </div>
 </form>
 {% else %}
-<div class="card card--padded">
+<div class="card card--padded" style="margin-bottom: 1rem;">
   <p class="prose-label">Statut du dossier</p>
-  <p style="margin: 0 0 1rem;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
-  {% if rapport.conclusion %}
-  <p class="prose-label">Réponse officielle</p>
-  <div class="prose"><p>{{ rapport.conclusion }}</p></div>
+  <p style="margin: 0;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
+</div>
+{% endif %}
+
+<!-- Réponses officielles à la commission : historique + envoi (séparé du suivi interne) -->
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <p class="prose-label" style="margin-bottom: 1rem;">Réponses officielles de la commission</p>
+
+  {% if rapport.reponses_affichage %}
+  <div class="reponse-list">
+    {% for r in rapport.reponses_affichage | reverse %}
+    <div class="reponse-item">
+      <div class="reponse-item__header">
+        <span class="badge-type">{{ r.type_label }}</span>
+        <span class="reponse-item__meta">{{ r.author_name }} — {{ r.author_rank }} · {{ r.sent_at_fr }}</span>
+      </div>
+      <div class="prose"><p>{{ r.content }}</p></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-state__text" style="margin: 0;">Aucune réponse envoyée pour le moment.</p>
   {% endif %}
 </div>
+
+{% if is_ceam_member %}
+<form method="post" class="form-card">
+  {{ reponse_form.hidden_tag() }}
+  <input type="hidden" name="action" value="reponse">
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </span>
+      Envoyer une nouvelle réponse
+    </h2>
+    <div class="form-grid form-grid--single">
+      <div class="form-group">{{ reponse_form.type.label }}{{ reponse_form.type(placeholder="Ex: Issue de l'examen préliminaire, Procès-verbal, Délibéré…") }}</div>
+      <div class="form-group">{{ reponse_form.content.label }}{{ reponse_form.content(placeholder="Contenu transmis au plaignant…") }}</div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit">Envoyer la réponse</button>
+  </div>
+</form>
 {% endif %}
 
 <div class="detail-meta">

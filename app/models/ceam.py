@@ -37,10 +37,23 @@ class Rapport:
 
     AFFECTATIONS = ["TMC", "NMH"]
 
+    # --- Réponses officielles envoyées au plaignant ---
+    # Le type est désormais un texte libre saisi par la commission (voir
+    # ReponseForm). Seul l'accusé de réception automatique utilise un texte
+    # de type fixe, généré à la création du rapport.
+    ACCUSE_RECEPTION_TYPE = "Accusé de réception"
+
+    ACCUSE_RECEPTION_TEXTE = (
+        "Votre rapport a bien été reçu par la commission d'éthique des affaires "
+        "médicales (CEAM). Il sera examiné dans les meilleurs délais ; vous "
+        "recevrez une réponse sur l'issue de l'examen préliminaire dès que "
+        "celui-ci sera terminé."
+    )
+
     def __init__(self, id, plaignant_last_name, plaignant_first_name, plaignant_affectation, plaignant_rank,
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, witness, description, proof,
-                 send_date, owner_id, status, note, conclusion):
+                 send_date, owner_id, status, note, reponses=None):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -59,7 +72,10 @@ class Rapport:
         self.owner_id = owner_id
         self.status = status
         self.note = note
-        self.conclusion = conclusion
+        # Historique des réponses officielles envoyées au plaignant : liste de
+        # dicts {type, content, author_name, author_rank, sent_at}.
+        # Remplace l'ancien champ unique `conclusion`.
+        self.reponses = reponses or []
 
     # --- Confort d'affichage ---
     @property
@@ -85,6 +101,26 @@ class Rapport:
         except (ValueError, TypeError):
             return self.send_date
 
+    @property
+    def reponses_affichage(self):
+        """Historique des réponses, prêt à afficher (libellé de type + date
+        FR), dans l'ordre chronologique d'envoi."""
+        affichage = []
+        for r in self.reponses:
+            sent_at = r.get("sent_at", "")
+            try:
+                sent_at_fr = datetime.fromisoformat(sent_at).strftime("%d/%m/%Y à %H:%M")
+            except (ValueError, TypeError):
+                sent_at_fr = sent_at
+            affichage.append({
+                "type_label": r.get("type") or "Réponse",
+                "content": r.get("content", ""),
+                "author_name": r.get("author_name", ""),
+                "author_rank": r.get("author_rank", ""),
+                "sent_at_fr": sent_at_fr,
+            })
+        return affichage
+
     def to_dict(self):
         return {
             "plaignant_last_name": self.plaignant_last_name,
@@ -104,13 +140,17 @@ class Rapport:
             "owner_id": self.owner_id,
             "status": self.status,
             "note": self.note,
-            "conclusion": self.conclusion,
+            "reponses": self.reponses,
         }
 
     @classmethod
     def _from_doc(cls, doc):
         data = doc.to_dict()
-        return cls(id=int(doc.id), **{k: v for k, v in data.items()})
+        # `conclusion` : ancien champ (avant l'historique des réponses),
+        # ignoré s'il traîne encore sur d'anciens documents Firestore.
+        data.pop("conclusion", None)
+        data.setdefault("reponses", [])
+        return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
     @classmethod
@@ -134,9 +174,16 @@ class Rapport:
             event_date=event_date, event_hour=event_hour, witness=witness,
             description=description, proof=proof,
             send_date=datetime.utcnow().isoformat(timespec="minutes"),
-            owner_id=owner_id, status=cls.STATUS_NOUVEAU, note="", conclusion="",
+            owner_id=owner_id, status=cls.STATUS_NOUVEAU, note="", reponses=[],
         )
         db.collection(COLLECTION).document(str(new_id)).set(rapport.to_dict())
+        # Accusé de réception automatique, immédiatement après la création.
+        rapport.add_reponse(
+            type_=cls.ACCUSE_RECEPTION_TYPE,
+            content=cls.ACCUSE_RECEPTION_TEXTE,
+            author_name="Commission CEAM",
+            author_rank="Envoi automatique",
+        )
         return rapport
 
     @staticmethod
@@ -183,14 +230,30 @@ class Rapport:
         docs = db.collection(COLLECTION).stream()
         return sum(1 for _ in docs)
 
-    def update_instruction(self, status, note, conclusion):
+    def update_instruction(self, status, note):
+        """Met à jour le suivi interne (statut + note), indépendant des
+        réponses officielles envoyées au plaignant."""
         db = get_db()
         db.collection(COLLECTION).document(str(self.id)).update(
-            {"status": status, "note": note, "conclusion": conclusion}
+            {"status": status, "note": note}
         )
         self.status = status
         self.note = note
-        self.conclusion = conclusion
+
+    def add_reponse(self, type_, content, author_name, author_rank):
+        """Ajoute une réponse officielle à l'historique et la persiste."""
+        db = get_db()
+        reponse = {
+            "type": type_,
+            "content": content,
+            "author_name": author_name,
+            "author_rank": author_rank,
+            "sent_at": datetime.utcnow().isoformat(timespec="minutes"),
+        }
+        reponses = self.reponses + [reponse]
+        db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
+        self.reponses = reponses
+        return reponse
 
     def __repr__(self):
         return f"<Rapport {self.reference} ({self.status_label})>"
