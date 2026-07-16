@@ -777,6 +777,7 @@ textarea {
   min-height: 100px;
   resize: vertical;
   line-height: 1.5;
+  overflow-wrap: break-word;
 }
 
 select {
@@ -1029,7 +1030,11 @@ button, .btn {
   color: var(--text-secondary);
 }
 
-.prose p { margin: 0 0 0.75rem; }
+.prose p {
+  margin: 0 0 0.75rem;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+}
 .prose p:last-child { margin-bottom: 0; }
 
 .prose-label {
