@@ -9,20 +9,31 @@ COLLECTION = "ceam"
 
 
 class Rapport:
-    # Statuts (schéma : status de 0 à 4)
+    # Statuts (schéma : status de 0 à 5)
     STATUS_NOUVEAU = 0
-    STATUS_EN_INSTRUCTION = 1
-    STATUS_COMPLEMENT_DEMANDE = 2
-    STATUS_ATTENTE_DECISION = 3
-    STATUS_CLOTURE = 4
+    STATUS_EN_EXAMEN = 1
+    STATUS_EN_INSTRUCTION = 2
+    STATUS_TRAITEMENT_SUSPENDU = 3
+    STATUS_NON_RECEVABLE = 4
+    STATUS_CLOTURE = 5
 
     STATUS_LABELS = {
         STATUS_NOUVEAU: "Nouveau",
+        STATUS_EN_EXAMEN: "En cours d'examen",
         STATUS_EN_INSTRUCTION: "En cours d'instruction",
-        STATUS_COMPLEMENT_DEMANDE: "Informations complémentaires demandées",
-        STATUS_ATTENTE_DECISION: "En attente de décision",
+        STATUS_TRAITEMENT_SUSPENDU: "Traitement suspendu",
+        STATUS_NON_RECEVABLE: "Non recevable",
         STATUS_CLOTURE: "Clôturé",
     }
+
+    # Tous les statuts sauf "Clôturé" sont considérés comme des dossiers ouverts.
+    OPEN_STATUSES = [
+        STATUS_NOUVEAU,
+        STATUS_EN_EXAMEN,
+        STATUS_EN_INSTRUCTION,
+        STATUS_TRAITEMENT_SUSPENDU,
+        STATUS_NON_RECEVABLE,
+    ]
 
     AFFECTATIONS = ["TMC", "NMH"]
 
@@ -146,7 +157,7 @@ class Rapport:
         if status_filter is not None:
             query = query.where(filter=FieldFilter("status", "==", status_filter))
         else:
-            query = query.where(filter=FieldFilter("status", "in", [0, 1, 2, 3]))
+            query = query.where(filter=FieldFilter("status", "in", cls.OPEN_STATUSES))
         docs = query.stream()
         return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
 
