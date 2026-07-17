@@ -5,7 +5,7 @@ import requests
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required, login_user, logout_user
 
-from app.auth.discord import exchange_code_for_token, fetch_discord_user, fetch_guild_member
+from app.auth.discord import build_avatar_url, exchange_code_for_token, fetch_discord_user, fetch_guild_member
 from app.models.user import User
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -95,14 +95,15 @@ def callback():
     # serveur, ou vérif serveur ignorée en dev), on retombe sur le pseudo du
     # compte Discord.
     name = guild_nickname or discord_user.get("global_name") or discord_user["username"]
+    avatar_url = build_avatar_url(discord_user)
 
     user = User.get_by_discord_id(discord_id)
 
     if user is None:
-        user = User.create(discord_id=discord_id, name=name, role=User.ROLE_DECLARANT)
-    elif user.name != name:
-        # Garde le pseudo à jour si la personne a changé de pseudo sur le serveur.
-        user.update_name(name)
+        user = User.create(discord_id=discord_id, name=name, role=User.ROLE_DECLARANT, avatar_url=avatar_url)
+    elif user.name != name or user.avatar_url != avatar_url:
+        # Garde le pseudo et la photo de profil à jour à chaque connexion.
+        user.update_profile(name, avatar_url)
 
     login_user(user, remember=True)
     session.permanent = True

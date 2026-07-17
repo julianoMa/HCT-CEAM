@@ -21,11 +21,12 @@ class User(UserMixin):
         ROLE_ADMIN: "Administrateur",
     }
 
-    def __init__(self, id, discord_id, name, role):
+    def __init__(self, id, discord_id, name, role, avatar_url=None):
         self.id = id
         self.discord_id = discord_id
         self.name = name
         self.role = role
+        self.avatar_url = avatar_url
 
     # --- Flask-Login ---
     def get_id(self):
@@ -37,12 +38,23 @@ class User(UserMixin):
         return self.ROLE_LABELS.get(self.role, "Inconnu")
 
     def to_dict(self):
-        return {"discord_id": self.discord_id, "name": self.name, "role": self.role}
+        return {
+            "discord_id": self.discord_id,
+            "name": self.name,
+            "role": self.role,
+            "avatar_url": self.avatar_url,
+        }
 
     @classmethod
     def _from_doc(cls, doc):
         data = doc.to_dict()
-        return cls(id=int(doc.id), discord_id=data["discord_id"], name=data["name"], role=data["role"])
+        return cls(
+            id=int(doc.id),
+            discord_id=data["discord_id"],
+            name=data["name"],
+            role=data["role"],
+            avatar_url=data.get("avatar_url"),
+        )
 
     # --- Accès Firestore ---
     @classmethod
@@ -59,10 +71,10 @@ class User(UserMixin):
         return cls._from_doc(docs[0]) if docs else None
 
     @classmethod
-    def create(cls, discord_id, name, role=ROLE_DECLARANT):
+    def create(cls, discord_id, name, role=ROLE_DECLARANT, avatar_url=None):
         db = get_db()
         new_id = next_id(db, COLLECTION)
-        user = cls(id=new_id, discord_id=int(discord_id), name=name, role=role)
+        user = cls(id=new_id, discord_id=int(discord_id), name=name, role=role, avatar_url=avatar_url)
         db.collection(COLLECTION).document(str(new_id)).set(user.to_dict())
         return user
 
@@ -77,10 +89,15 @@ class User(UserMixin):
         db.collection(COLLECTION).document(str(self.id)).update({"role": new_role})
         self.role = new_role
 
-    def update_name(self, new_name):
+    def update_profile(self, name, avatar_url):
+        """Garde le pseudo et la photo de profil synchronisés avec Discord,
+        appelé à chaque connexion (voir auth/routes.py)."""
         db = get_db()
-        db.collection(COLLECTION).document(str(self.id)).update({"name": new_name})
-        self.name = new_name
+        db.collection(COLLECTION).document(str(self.id)).update(
+            {"name": name, "avatar_url": avatar_url}
+        )
+        self.name = name
+        self.avatar_url = avatar_url
 
     def __repr__(self):
         return f"<User {self.name} ({self.role_label})>"
