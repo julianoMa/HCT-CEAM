@@ -77,6 +77,27 @@
 </div>
 {% endif %}
 
+<!-- Historique des changements de statut : réservé à la commission -->
+{% if is_ceam_member %}
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <p class="prose-label" style="margin-bottom: 1rem;">Historique des statuts</p>
+  {% if rapport.status_history_affichage %}
+  <div class="reponse-list">
+    {% for h in rapport.status_history_affichage | reverse %}
+    <div class="reponse-item">
+      <div class="reponse-item__header">
+        {{ status_badge(h.status_value, h.status_label) }}
+        <span class="reponse-item__meta">{{ h.author_name }} — {{ h.author_rank }} · {{ h.changed_at_fr }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-state__text" style="margin: 0;">Aucun changement de statut enregistré.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- Réponses officielles à la commission : historique + envoi (séparé du suivi interne) -->
 <div class="card card--padded" style="margin-bottom: 1rem;">
   <p class="prose-label" style="margin-bottom: 1rem;">Réponses officielles de la commission</p>

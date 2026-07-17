@@ -37,6 +37,10 @@ class Rapport:
 
     AFFECTATIONS = ["TMC", "NMH"]
 
+    # Nombre de jours au-delà duquel un dossier resté au statut "Nouveau"
+    # déclenche une alerte de relance dans les statistiques.
+    STALE_NOUVEAU_JOURS = 5
+
     # --- Réponses officielles envoyées au plaignant ---
     # Le type est désormais un texte libre saisi par la commission (voir
     # ReponseForm). Seul l'accusé de réception automatique utilise un texte
@@ -53,7 +57,7 @@ class Rapport:
     def __init__(self, id, plaignant_last_name, plaignant_first_name, plaignant_affectation, plaignant_rank,
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, witness, description, proof,
-                 send_date, owner_id, status, note, reponses=None, archived=False):
+                 send_date, owner_id, status, note, reponses=None, archived=False, status_history=None):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -80,6 +84,9 @@ class Rapport:
         # STATUS_CLOTURE) reste visible par le déclarant tant qu'il n'a pas
         # été explicitement archivé par le président CEAM.
         self.archived = archived
+        # Historique des changements de statut : liste de dicts
+        # {status, author_name, author_rank, changed_at}.
+        self.status_history = status_history or []
 
     # --- Confort d'affichage ---
     @property
@@ -125,6 +132,50 @@ class Rapport:
             })
         return affichage
 
+    @property
+    def status_history_affichage(self):
+        """Historique des changements de statut, prêt à afficher."""
+        affichage = []
+        for h in self.status_history:
+            changed_at = h.get("changed_at", "")
+            try:
+                changed_at_fr = datetime.fromisoformat(changed_at).strftime("%d/%m/%Y à %H:%M")
+            except (ValueError, TypeError):
+                changed_at_fr = changed_at
+            affichage.append({
+                "status_value": h.get("status"),
+                "status_label": self.STATUS_LABELS.get(h.get("status"), "Inconnu"),
+                "author_name": h.get("author_name", ""),
+                "author_rank": h.get("author_rank", ""),
+                "changed_at_fr": changed_at_fr,
+            })
+        return affichage
+
+    @property
+    def delai_traitement_jours(self):
+        """Nombre de jours entre le dépôt et la 1ère clôture, ou None si le
+        dossier n'a jamais été clôturé."""
+        cloture_entries = [h for h in self.status_history if h.get("status") == self.STATUS_CLOTURE]
+        if not cloture_entries or not self.send_date:
+            return None
+        try:
+            depot = datetime.fromisoformat(self.send_date)
+            cloture = datetime.fromisoformat(cloture_entries[0]["changed_at"])
+            return (cloture - depot).total_seconds() / 86400
+        except (ValueError, TypeError, KeyError):
+            return None
+
+    @property
+    def jours_depuis_depot(self):
+        """Nombre de jours écoulés depuis le dépôt du rapport (à l'instant présent)."""
+        if not self.send_date:
+            return None
+        try:
+            depot = datetime.fromisoformat(self.send_date)
+            return (datetime.utcnow() - depot).total_seconds() / 86400
+        except (ValueError, TypeError):
+            return None
+
     def to_dict(self):
         return {
             "plaignant_last_name": self.plaignant_last_name,
@@ -146,6 +197,7 @@ class Rapport:
             "note": self.note,
             "reponses": self.reponses,
             "archived": self.archived,
+            "status_history": self.status_history,
         }
 
     @classmethod
@@ -156,6 +208,7 @@ class Rapport:
         data.pop("conclusion", None)
         data.setdefault("reponses", [])
         data.setdefault("archived", False)
+        data.setdefault("status_history", [])
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -171,6 +224,7 @@ class Rapport:
                event_date, event_hour, witness, description, proof):
         db = get_db()
         new_id = next_id(db, COLLECTION)
+        send_date = datetime.utcnow().isoformat(timespec="minutes")
         rapport = cls(
             id=new_id,
             plaignant_last_name=plaignant_last_name, plaignant_first_name=plaignant_first_name,
@@ -179,8 +233,14 @@ class Rapport:
             concerne_affectation=concerne_affectation, concerne_rank=concerne_rank,
             event_date=event_date, event_hour=event_hour, witness=witness,
             description=description, proof=proof,
-            send_date=datetime.utcnow().isoformat(timespec="minutes"),
+            send_date=send_date,
             owner_id=owner_id, status=cls.STATUS_NOUVEAU, note="", reponses=[],
+            status_history=[{
+                "status": cls.STATUS_NOUVEAU,
+                "author_name": "Commission CEAM",
+                "author_rank": "Création du dossier",
+                "changed_at": send_date,
+            }],
         )
         db.collection(COLLECTION).document(str(new_id)).set(rapport.to_dict())
         # Accusé de réception automatique, immédiatement après la création.
@@ -190,6 +250,7 @@ class Rapport:
             author_name="Commission CEAM",
             author_rank="Envoi automatique",
         )
+        rapport._notifier_nouveau_rapport()
         return rapport
 
     @staticmethod
@@ -244,18 +305,78 @@ class Rapport:
         docs = db.collection(COLLECTION).stream()
         return sum(1 for _ in docs)
 
-    def update_instruction(self, status, note):
-        """Met à jour le suivi interne (statut + note), indépendant des
-        réponses officielles envoyées au plaignant."""
+    @classmethod
+    def compute_statistiques(cls):
+        """Calcule toutes les statistiques de la page Statistiques en un
+        seul passage sur la collection (comptages par statut, délai moyen
+        de traitement, répartition TMC/NMH, alertes de relance)."""
         db = get_db()
-        db.collection(COLLECTION).document(str(self.id)).update(
-            {"status": status, "note": note}
-        )
+        rapports = [cls._from_doc(d) for d in db.collection(COLLECTION).stream()]
+
+        counts_by_status = {value: 0 for value in cls.STATUS_LABELS}
+        affectation_counts = {a: 0 for a in cls.AFFECTATIONS}
+        delais = []
+        relances = []
+
+        for r in rapports:
+            counts_by_status[r.status] = counts_by_status.get(r.status, 0) + 1
+
+            if r.plaignant_affectation in affectation_counts:
+                affectation_counts[r.plaignant_affectation] += 1
+
+            delai = r.delai_traitement_jours
+            if delai is not None:
+                delais.append(delai)
+
+            jours = r.jours_depuis_depot
+            if (
+                not r.archived
+                and r.status == cls.STATUS_NOUVEAU
+                and jours is not None
+                and jours >= cls.STALE_NOUVEAU_JOURS
+            ):
+                relances.append(r)
+
+        relances.sort(key=lambda r: r.send_date or "")
+
+        return {
+            "total": len(rapports),
+            "counts_by_status": counts_by_status,
+            "delai_moyen_jours": (sum(delais) / len(delais)) if delais else None,
+            "delai_moyen_dossiers": len(delais),
+            "affectation_counts": affectation_counts,
+            "relances": relances,
+        }
+
+    def update_instruction(self, status, note, author_name, author_rank):
+        """Met à jour le suivi interne (statut + note), indépendant des
+        réponses officielles envoyées au plaignant. N'ajoute une entrée à
+        l'historique que si le statut change réellement (pas si seule la
+        note est modifiée)."""
+        db = get_db()
+        updates = {"status": status, "note": note}
+        status_changed = status != self.status
+
+        if status_changed:
+            entry = {
+                "status": status,
+                "author_name": author_name,
+                "author_rank": author_rank,
+                "changed_at": datetime.utcnow().isoformat(timespec="minutes"),
+            }
+            new_history = self.status_history + [entry]
+            updates["status_history"] = new_history
+
+        db.collection(COLLECTION).document(str(self.id)).update(updates)
         self.status = status
         self.note = note
+        if status_changed:
+            self.status_history = new_history
+            self._notifier_changement_statut(entry)
 
     def add_reponse(self, type_, content, author_name, author_rank):
-        """Ajoute une réponse officielle à l'historique et la persiste."""
+        """Ajoute une réponse officielle à l'historique, la persiste, et
+        notifie le déclarant par MP Discord."""
         db = get_db()
         reponse = {
             "type": type_,
@@ -267,7 +388,65 @@ class Rapport:
         reponses = self.reponses + [reponse]
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
         self.reponses = reponses
+        self._notifier_nouvelle_reponse(reponse)
         return reponse
+
+    def _notifier_nouveau_rapport(self):
+        """MP à tous les membres de la commission lors du dépôt d'un rapport."""
+        from app.models.user import User  # import différé : évite un cycle d'import
+        from app.notifications import send_discord_dm
+
+        url = self._detail_url()
+        contenu = (
+            f"📋 Nouveau rapport déposé sur la CEAM : {self.reference}\n"
+            f"{self.plaignant_first_name} {self.plaignant_last_name} c/ "
+            f"{self.concerne_first_name} {self.concerne_last_name}"
+        )
+        if url:
+            contenu += f"\n{url}"
+        for membre in User.list_ceam_members():
+            send_discord_dm(membre.discord_id, contenu)
+
+    def _notifier_nouvelle_reponse(self, reponse):
+        """MP au déclarant lors de l'ajout d'une réponse officielle."""
+        from app.models.user import User  # import différé : évite un cycle d'import
+        from app.notifications import send_discord_dm
+
+        owner = User.get(self.owner_id)
+        if owner is None:
+            return
+        url = self._detail_url()
+        contenu = (
+            f"📬 Nouvelle réponse de la commission CEAM sur ton dossier "
+            f"{self.reference} ({reponse['type']})"
+        )
+        if url:
+            contenu += f"\n{url}"
+        send_discord_dm(owner.discord_id, contenu)
+
+    def _notifier_changement_statut(self, entry):
+        """MP au déclarant lors d'un changement de statut."""
+        from app.models.user import User  # import différé : évite un cycle d'import
+        from app.notifications import send_discord_dm
+
+        owner = User.get(self.owner_id)
+        if owner is None:
+            return
+        url = self._detail_url()
+        label = self.STATUS_LABELS.get(entry["status"], "Inconnu")
+        contenu = f"🔄 Le statut de ton dossier {self.reference} est passé à : {label}"
+        if url:
+            contenu += f"\n{url}"
+        send_discord_dm(owner.discord_id, contenu)
+
+    def _detail_url(self):
+        """URL absolue vers la page de détail de ce dossier, ou None si
+        appelé hors contexte de requête (ex: script, tests)."""
+        try:
+            from flask import url_for
+            return url_for("ceam.detail", rapport_id=self.id, _external=True)
+        except RuntimeError:
+            return None
 
     def archive(self):
         """Archive le dossier : il disparaît des vues du déclarant et du
@@ -281,6 +460,27 @@ class Rapport:
         """Supprime définitivement un dossier (irréversible)."""
         db = get_db()
         db.collection(COLLECTION).document(str(rapport_id)).delete()
+
+    @staticmethod
+    def filter_by_search(rapports, query):
+        """Filtre une liste de Rapport déjà chargée par référence, nom du
+        plaignant ou du concerné (recherche insensible à la casse).
+        Firestore ne fait pas de recherche texte native ; pour le volume
+        d'un outil interne, filtrer en mémoire après la requête Firestore
+        est largement suffisant et évite d'ajouter un service tiers."""
+        query = (query or "").strip().lower()
+        if not query:
+            return rapports
+
+        def matches(r):
+            haystack = " ".join([
+                r.reference,
+                r.plaignant_first_name, r.plaignant_last_name,
+                r.concerne_first_name, r.concerne_last_name,
+            ]).lower()
+            return query in haystack
+
+        return [r for r in rapports if matches(r)]
 
     def __repr__(self):
         return f"<Rapport {self.reference} ({self.status_label})>"

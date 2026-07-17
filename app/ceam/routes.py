@@ -39,8 +39,10 @@ def depot():
 @bp.route("/mes-dossiers")
 @login_required
 def mes_dossiers():
+    search_query = request.args.get("q", "")
     rapports = Rapport.query_by_owner(current_user.id)
-    return render_template("ceam/mes_dossiers.html", rapports=rapports)
+    rapports = Rapport.filter_by_search(rapports, search_query)
+    return render_template("ceam/mes_dossiers.html", rapports=rapports, search_query=search_query)
 
 
 @bp.route("/suivi")
@@ -48,12 +50,15 @@ def mes_dossiers():
 @requires_role(User.ROLE_MEMBRE_CEAM)
 def suivi():
     status_filter = request.args.get("status", type=int)
+    search_query = request.args.get("q", "")
     rapports = Rapport.query_open(status_filter=status_filter)
+    rapports = Rapport.filter_by_search(rapports, search_query)
     return render_template(
         "ceam/suivi.html",
         rapports=rapports,
         status_labels=Rapport.STATUS_LABELS,
         status_filter=status_filter,
+        search_query=search_query,
     )
 
 
@@ -61,8 +66,10 @@ def suivi():
 @login_required
 @requires_role(User.ROLE_MEMBRE_CEAM)
 def archives():
+    search_query = request.args.get("q", "")
     rapports = Rapport.query_archived()
-    return render_template("ceam/archives.html", rapports=rapports)
+    rapports = Rapport.filter_by_search(rapports, search_query)
+    return render_template("ceam/archives.html", rapports=rapports, search_query=search_query)
 
 
 @bp.route("/dossier/<int:rapport_id>", methods=["GET", "POST"])
@@ -96,7 +103,10 @@ def detail(rapport_id):
             if instruction_form.status.data == Rapport.STATUS_CLOTURE and not can_close:
                 flash("Seul le président CEAM peut clôturer un dossier.", "danger")
             else:
-                rapport.update_instruction(instruction_form.status.data, instruction_form.note.data)
+                rapport.update_instruction(
+                    instruction_form.status.data, instruction_form.note.data,
+                    current_user.name, current_user.role_label,
+                )
                 flash("Suivi interne mis à jour.", "success")
             return redirect(url_for("ceam.detail", rapport_id=rapport.id))
 
@@ -148,6 +158,10 @@ def supprimer(rapport_id):
 @login_required
 @requires_role(User.ROLE_MEMBRE_CEAM)
 def statistiques():
-    counts = {label: Rapport.count_by_status(value) for value, label in Rapport.STATUS_LABELS.items()}
-    total = Rapport.count_all()
-    return render_template("ceam/statistiques.html", counts=counts, total=total)
+    stats = Rapport.compute_statistiques()
+    return render_template(
+        "ceam/statistiques.html",
+        stats=stats,
+        status_labels=Rapport.STATUS_LABELS,
+        seuil_relance=Rapport.STALE_NOUVEAU_JOURS,
+    )

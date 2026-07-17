@@ -24,6 +24,13 @@ class Config:
     DISCORD_REDIRECT_URI = os.environ.get("DISCORD_REDIRECT_URI")
     DISCORD_GUILD_ID = os.environ.get("DISCORD_GUILD_ID")
 
+    # Token du bot Discord, utilisé uniquement pour envoyer des MP de
+    # notification (nouveau rapport, nouvelle réponse, changement de statut).
+    # Portail développeur Discord > ton appli > Bot > Reset Token.
+    # Le bot doit être invité sur le serveur HCT (aucune permission
+    # particulière requise, juste partager un serveur avec les utilisateurs).
+    DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
+
     DISCORD_AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
     DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
     DISCORD_API_BASE_URL = "https://discord.com/api"

@@ -4,6 +4,12 @@
 {% block content %}
 {% call page_header("Commission", "Archives", "Dossiers archivés par la commission — non visibles par les déclarants.") %}{% endcall %}
 
+<form method="get" class="search-bar">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Rechercher par référence ou par nom…" class="search-input">
+  <button type="submit" class="btn-secondary">Rechercher</button>
+  {% if search_query %}<a href="{{ url_for('ceam.archives') }}" class="btn-ghost">Effacer</a>{% endif %}
+</form>
+
 <div class="card">
   {% set list_context = "archives" %}
   {% include "ceam/_liste_dossiers.html" %}

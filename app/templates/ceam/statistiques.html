@@ -1,19 +1,80 @@
-{% from "macros/ui.html" import page_header %}
+{% from "macros/ui.html" import page_header, empty_state %}
 
 {% extends "base.html" %}
 {% block content %}
 {% call page_header("Commission", "Statistiques", "Vue d'ensemble de l'activité de la commission.") %}{% endcall %}
 
-<div class="metrics">
+<div class="metrics" style="margin-bottom: 1.5rem;">
   <div class="metric metric--highlight">
     <p class="metric__label">Total des dossiers</p>
-    <p class="metric__value">{{ total }}</p>
+    <p class="metric__value">{{ stats.total }}</p>
   </div>
-  {% for label, count in counts.items() %}
+  {% for value, label in status_labels.items() %}
   <div class="metric">
     <p class="metric__label">{{ label }}</p>
-    <p class="metric__value">{{ count }}</p>
+    <p class="metric__value">{{ stats.counts_by_status.get(value, 0) }}</p>
   </div>
   {% endfor %}
+</div>
+
+<div class="card-grid" style="margin-bottom: 1.5rem;">
+  <div class="info-card">
+    <p class="info-card__label">Délai moyen de traitement</p>
+    {% if stats.delai_moyen_jours is not none %}
+    <p class="info-card__name">{{ "%.1f"|format(stats.delai_moyen_jours) }} jours</p>
+    <p class="info-card__meta">
+      {% if stats.delai_moyen_dossiers == 1 %}
+      Calculé sur 1 dossier clôturé
+      {% else %}
+      Calculé sur {{ stats.delai_moyen_dossiers }} dossiers clôturés
+      {% endif %}
+    </p>
+    {% else %}
+    <p class="info-card__name">—</p>
+    <p class="info-card__meta">Aucun dossier clôturé pour le moment</p>
+    {% endif %}
+  </div>
+  <div class="info-card">
+    <p class="info-card__label">Répartition par affectation (plaignant)</p>
+    <p class="info-card__name">TMC : {{ stats.affectation_counts.get("TMC", 0) }} — NMH : {{ stats.affectation_counts.get("NMH", 0) }}</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__header">
+    <h2 class="card__title">Dossiers en attente de prise en charge</h2>
+    <span class="data-table__muted">Statut "Nouveau" depuis plus de {{ seuil_relance }} jours</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Référence</th>
+          <th>Plaignant</th>
+          <th>Déposé le</th>
+          <th>Jours écoulés</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in stats.relances %}
+        <tr>
+          <td><a href="{{ url_for('ceam.detail', rapport_id=r.id) }}" class="data-table__link">{{ r.reference }}</a></td>
+          <td>{{ r.plaignant_first_name }} {{ r.plaignant_last_name }}</td>
+          <td class="data-table__muted">{{ r.send_date_fr }}</td>
+          <td>{{ (r.jours_depuis_depot | round(0, 'floor')) | int }} j</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4">
+            {{ empty_state(
+              "Aucun dossier en attente",
+              "Tous les dossiers récents ont été pris en charge par la commission."
+            ) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

@@ -4,10 +4,17 @@
 {% block content %}
 {% call page_header("Commission", "Suivi CEAM", "Dossiers en cours d'instruction par la commission.") %}{% endcall %}
 
+<form method="get" class="search-bar">
+  {% if status_filter is not none %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Rechercher par référence ou par nom…" class="search-input">
+  <button type="submit" class="btn-secondary">Rechercher</button>
+  {% if search_query %}<a href="{{ url_for('ceam.suivi', status=status_filter) }}" class="btn-ghost">Effacer</a>{% endif %}
+</form>
+
 <div class="filter-bar">
-  <a class="filter-chip {{ 'is-active' if status_filter is none }}" href="{{ url_for('ceam.suivi') }}">Tous</a>
+  <a class="filter-chip {{ 'is-active' if status_filter is none }}" href="{{ url_for('ceam.suivi', q=(search_query or none)) }}">Tous</a>
   {% for value, label in status_labels.items() %}
-  <a class="filter-chip {{ 'is-active' if status_filter == value }}" href="{{ url_for('ceam.suivi', status=value) }}">{{ label }}</a>
+  <a class="filter-chip {{ 'is-active' if status_filter == value }}" href="{{ url_for('ceam.suivi', status=value, q=(search_query or none)) }}">{{ label }}</a>
   {% endfor %}
 </div>
 
