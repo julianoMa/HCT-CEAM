@@ -7,11 +7,11 @@
   --sidebar-border: #e2e8f0;
   --sidebar-text: #475569;
   --sidebar-text-active: #0f172a;
-  --sidebar-accent: #4338ca;
+  --sidebar-accent: #d99e46;
   --sidebar-w: 272px;
 
   --bg: #e7ebf3;
-  --bg-accent: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(67, 56, 202, 0.14), transparent);
+  --bg-accent: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(244, 182, 93, 0.16), transparent);
   --surface: #ffffff;
   --surface-elevated: #ffffff;
   --border: #cbd5e1;
@@ -21,10 +21,11 @@
   --text-secondary: #334155;
   --text-muted: #64748b;
 
-  --accent: #4338ca;
-  --accent-hover: #372ea3;
-  --accent-soft: rgba(67, 56, 202, 0.12);
-  --accent-gradient: linear-gradient(135deg, #4338ca 0%, #7c3aed 100%);
+  --accent: #f4b65d;
+  --accent-hover: #d99e46;
+  --accent-soft: rgba(244, 182, 93, 0.16);
+  --accent-gradient: linear-gradient(135deg, #f4b65d 0%, #e0914a 100%);
+  --accent-contrast: #1a1203;
 
   --success-bg: #dcfce7;
   --success-text: #047857;
@@ -56,10 +57,10 @@
   --sidebar-border: #262e3f;
   --sidebar-text: #94a1b8;
   --sidebar-text-active: #f1f5f9;
-  --sidebar-accent: #7c74fa;
+  --sidebar-accent: #f4b65d;
 
   --bg: #0b0f18;
-  --bg-accent: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 116, 250, 0.16), transparent);
+  --bg-accent: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(244, 182, 93, 0.14), transparent);
   --surface: #171d2b;
   --surface-elevated: #1c2333;
   --border: #2a3245;
@@ -69,10 +70,11 @@
   --text-secondary: #b7c0d1;
   --text-muted: #7c8798;
 
-  --accent: #7c74fa;
-  --accent-hover: #9089fb;
-  --accent-soft: rgba(124, 116, 250, 0.18);
-  --accent-gradient: linear-gradient(135deg, #6d63f5 0%, #a78bfa 100%);
+  --accent: #f4b65d;
+  --accent-hover: #f7c579;
+  --accent-soft: rgba(244, 182, 93, 0.18);
+  --accent-gradient: linear-gradient(135deg, #f4b65d 0%, #e0914a 100%);
+  --accent-contrast: #1a1203;
 
   --success-bg: rgba(34, 197, 94, 0.15);
   --success-text: #4ade80;
@@ -272,7 +274,7 @@ a:hover { color: var(--accent-hover); }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--accent-contrast);
   font-weight: 600;
   font-size: 14px;
   flex-shrink: 0;
@@ -432,10 +434,10 @@ a:hover { color: var(--accent-hover); }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--accent-contrast);
   font-weight: 700;
   font-size: 18px;
-  box-shadow: 0 8px 24px rgba(67, 56, 202, 0.4);
+  box-shadow: 0 8px 24px rgba(244, 182, 93, 0.4);
 }
 
 .auth-card h1 {
@@ -628,13 +630,13 @@ a:hover { color: var(--accent-hover); }
 .metric--highlight {
   background: var(--accent-gradient);
   border-color: transparent;
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 .metric--highlight::before { display: none; }
 
 .metric--highlight .metric__label,
-.metric--highlight .metric__value { color: #fff; }
+.metric--highlight .metric__value { color: var(--accent-contrast); }
 
 .metric--highlight .metric__label { opacity: 0.9; }
 
@@ -777,12 +779,12 @@ a:hover { color: var(--accent-hover); }
 .filter-chip.is-active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 .filter-chip.is-active:hover {
   background: var(--accent-hover);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 /* ── Forms ── */
@@ -944,14 +946,14 @@ button, .btn {
 
 .btn-primary, button[type="submit"]:not(.btn-secondary):not(.btn-ghost) {
   background: var(--accent-gradient);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(67, 56, 202, 0.35);
+  color: var(--accent-contrast);
+  box-shadow: 0 2px 8px rgba(244, 182, 93, 0.35);
 }
 
 .btn-primary:hover, button[type="submit"]:not(.btn-secondary):not(.btn-ghost):hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(67, 56, 202, 0.45);
-  color: #fff;
+  box-shadow: 0 4px 16px rgba(244, 182, 93, 0.45);
+  color: var(--accent-contrast);
 }
 
 .btn-secondary {
