@@ -1,5 +1,6 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
 
 from app.ceam.forms import InstructionForm, RapportForm, ReglementForm, ReponseForm
 from app.models.audit_log import AuditLog
@@ -7,6 +8,7 @@ from app.models.ceam import Rapport
 from app.models.reglement import Reglement
 from app.models.user import User
 from app.permissions import requires_role
+from app.storage import fetch_attachment, upload_reponse_attachment
 
 bp = Blueprint("ceam", __name__, url_prefix="/ceam")
 
@@ -119,13 +121,35 @@ def detail(rapport_id):
             return redirect(url_for("ceam.detail", rapport_id=rapport.id))
 
         if action == "reponse" and reponse_form.validate_on_submit():
+            attachments = []
+            rejected = []
+            for uploaded in request.files.getlist("attachments"):
+                if not uploaded or not uploaded.filename:
+                    continue
+                try:
+                    meta = upload_reponse_attachment(rapport.id, uploaded)
+                except Exception:  # noqa: BLE001 - un souci Storage ne doit pas faire planter l'envoi
+                    meta = None
+                if meta:
+                    attachments.append(meta)
+                else:
+                    rejected.append(uploaded.filename)
+
             rapport.add_reponse(
                 type_=reponse_form.type.data,
                 content=reponse_form.content.data,
                 author_name=current_user.name,
                 author_rank=current_user.role_label,
+                attachments=attachments,
             )
-            flash("Réponse envoyée et ajoutée à l'historique du dossier.", "success")
+            if rejected:
+                flash(
+                    "Réponse envoyée, mais certains fichiers ont été ignorés (type non "
+                    "autorisé, PDF/image uniquement, 10 Mo max) : " + ", ".join(rejected),
+                    "danger",
+                )
+            else:
+                flash("Réponse envoyée et ajoutée à l'historique du dossier.", "success")
             return redirect(url_for("ceam.detail", rapport_id=rapport.id))
 
     return render_template(
@@ -210,3 +234,31 @@ def reglement():
             return redirect(url_for("ceam.reglement"))
 
     return render_template("ceam/reglement.html", reglement=doc, form=form, is_admin=is_admin)
+
+
+@bp.route("/dossier/<int:rapport_id>/piece-jointe/<attachment_id>")
+@login_required
+def piece_jointe(rapport_id, attachment_id):
+    """Sert une pièce jointe en appliquant les mêmes règles d'accès que la
+    page de détail (stockée dans Firestore, jamais exposée directement)."""
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+
+    is_owner = rapport.owner_id == current_user.id
+    is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
+    if not is_owner and not is_ceam_member:
+        abort(403)
+    if rapport.archived and not is_ceam_member:
+        abort(403)
+
+    data, content_type = fetch_attachment(attachment_id, rapport_id)
+    if data is None:
+        abort(404)
+
+    display_name = secure_filename(request.args.get("name", "")) or "fichier"
+    return Response(
+        data,
+        mimetype=content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{display_name}"'},
+    )

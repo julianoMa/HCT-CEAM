@@ -129,6 +129,7 @@ class Rapport:
                 "author_name": r.get("author_name", ""),
                 "author_rank": r.get("author_rank", ""),
                 "sent_at_fr": sent_at_fr,
+                "attachments": r.get("attachments") or [],
             })
         return affichage
 
@@ -383,7 +384,7 @@ class Rapport:
                 ),
             )
 
-    def add_reponse(self, type_, content, author_name, author_rank):
+    def add_reponse(self, type_, content, author_name, author_rank, attachments=None):
         """Ajoute une réponse officielle à l'historique, la persiste, et
         notifie le déclarant par MP Discord."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
@@ -395,6 +396,7 @@ class Rapport:
             "author_name": author_name,
             "author_rank": author_rank,
             "sent_at": datetime.utcnow().isoformat(timespec="minutes"),
+            "attachments": attachments or [],
         }
         reponses = self.reponses + [reponse]
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})

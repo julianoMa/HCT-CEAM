@@ -94,6 +94,28 @@
         <span class="reponse-item__meta">{{ r.author_name }} — {{ r.author_rank }} · {{ r.sent_at_fr }}</span>
       </div>
       <div class="prose rich-text">{{ r.content | rich_text }}</div>
+      {% if r.attachments %}
+      <div class="reponse-attachments">
+        {% for a in r.attachments %}
+        <a href="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}" target="_blank" rel="noopener noreferrer" class="attachment-card">
+          <div class="attachment-card__icon">
+            {% if a.content_type == 'application/pdf' %}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+            {% else %}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            {% endif %}
+          </div>
+          <div class="attachment-card__info">
+            <span class="attachment-card__name">{{ a.name }}</span>
+            <span class="attachment-card__meta">
+              {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
+              {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
+            </span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
@@ -127,14 +149,19 @@
 <div class="modal-overlay" id="reponse-modal" aria-hidden="true">
   <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="reponse-modal-title">
     <h2 id="reponse-modal-title" class="modal__title">Envoyer une nouvelle réponse</h2>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       {{ reponse_form.hidden_tag() }}
       <input type="hidden" name="action" value="reponse">
       <div class="form-group" style="margin-bottom: 1rem;">
         {{ reponse_form.type.label }}{{ reponse_form.type(placeholder="Ex: Issue de l'examen préliminaire, Procès-verbal, Délibéré…") }}
       </div>
-      <div class="form-group" style="margin-bottom: 1.25rem;">
+      <div class="form-group" style="margin-bottom: 1rem;">
         {{ reponse_form.content.label }}{{ reponse_form.content(rows=6, placeholder="Contenu transmis au plaignant…") }}
+      </div>
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        {{ reponse_form.attachments.label }}
+        {{ reponse_form.attachments(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp") }}
+        <p class="info-card__meta" style="margin-top: 4px;">PDF ou images, plusieurs fichiers possibles, 650 Ko max par fichier.</p>
       </div>
       <div class="modal__actions">
         <button type="button" class="btn-secondary" data-close-modal>Annuler</button>

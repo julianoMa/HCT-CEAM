@@ -1116,6 +1116,71 @@ button, .btn {
   color: var(--text-muted);
 }
 
+.reponse-attachments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-decoration: none;
+  transition: all var(--transition);
+}
+
+.attachment-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.attachment-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.attachment-card__icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.attachment-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attachment-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-card__meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .badge-type {
   display: inline-flex;
   align-items: center;

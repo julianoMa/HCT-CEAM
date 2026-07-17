@@ -1,4 +1,5 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import MultipleFileField
 from wtforms import DateField, SelectField, StringField, TextAreaField, TimeField
 from wtforms.validators import DataRequired, Length, Optional
 
@@ -37,9 +38,13 @@ class InstructionForm(FlaskForm):
 
 class ReponseForm(FlaskForm):
     """Envoi d'une nouvelle réponse officielle, ajoutée à l'historique du
-    dossier et visible par le plaignant."""
+    dossier et visible par le plaignant. La validation fine des pièces
+    jointes (type, taille) se fait côté serveur dans app/storage.py plutôt
+    que via un validateur WTForms, pour rester fiable quel que soit le
+    nombre de fichiers sélectionnés."""
     type = StringField("Type de réponse", validators=[DataRequired(), Length(max=100)])
     content = TextAreaField("Contenu de la réponse", validators=[DataRequired()])
+    attachments = MultipleFileField("Pièces jointes (PDF, images)")
 
 
 class ReglementForm(FlaskForm):
