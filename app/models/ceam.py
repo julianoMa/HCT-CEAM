@@ -270,15 +270,13 @@ class Rapport:
 
     @classmethod
     def query_open(cls, status_filter=None):
-        """Dossiers non archivés (statut ouvert par défaut, ou d'un statut
-        précis si status_filter est fourni). Un dossier archivé n'apparaît
-        plus ici, quel que soit son statut."""
+        """Dossiers non archivés : tous statuts confondus si status_filter
+        n'est pas fourni (y compris Clôturé), ou un statut précis sinon.
+        Un dossier archivé n'apparaît plus ici, quel que soit son statut."""
         db = get_db()
         query = db.collection(COLLECTION).where(filter=FieldFilter("archived", "==", False))
         if status_filter is not None:
             query = query.where(filter=FieldFilter("status", "==", status_filter))
-        else:
-            query = query.where(filter=FieldFilter("status", "in", cls.OPEN_STATUSES))
         docs = query.stream()
         return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
 
