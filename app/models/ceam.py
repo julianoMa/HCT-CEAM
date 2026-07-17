@@ -353,9 +353,12 @@ class Rapport:
         réponses officielles envoyées au plaignant. N'ajoute une entrée à
         l'historique que si le statut change réellement (pas si seule la
         note est modifiée)."""
+        from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+
         db = get_db()
         updates = {"status": status, "note": note}
         status_changed = status != self.status
+        ancien_label = self.status_label
 
         if status_changed:
             entry = {
@@ -373,10 +376,20 @@ class Rapport:
         if status_changed:
             self.status_history = new_history
             self._notifier_changement_statut(entry)
+            AuditLog.record(
+                action=AuditLog.ACTION_STATUS_CHANGE,
+                actor_name=author_name,
+                details=(
+                    f"{author_name} ({author_rank}) a changé le statut du dossier "
+                    f"{self.reference} : « {ancien_label} » → « {self.status_label} »"
+                ),
+            )
 
     def add_reponse(self, type_, content, author_name, author_rank):
         """Ajoute une réponse officielle à l'historique, la persiste, et
         notifie le déclarant par MP Discord."""
+        from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+
         db = get_db()
         reponse = {
             "type": type_,
@@ -389,6 +402,11 @@ class Rapport:
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
         self.reponses = reponses
         self._notifier_nouvelle_reponse(reponse)
+        AuditLog.record(
+            action=AuditLog.ACTION_REPONSE_ADD,
+            actor_name=author_name,
+            details=f"{author_name} ({author_rank}) a envoyé une réponse « {type_} » sur le dossier {self.reference}",
+        )
         return reponse
 
     def _notifier_nouveau_rapport(self):

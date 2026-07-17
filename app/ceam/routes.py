@@ -2,6 +2,7 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 
 from app.ceam.forms import InstructionForm, RapportForm, ReponseForm
+from app.models.audit_log import AuditLog
 from app.models.ceam import Rapport
 from app.models.user import User
 from app.permissions import requires_role
@@ -14,7 +15,7 @@ bp = Blueprint("ceam", __name__, url_prefix="/ceam")
 def depot():
     form = RapportForm()
     if form.validate_on_submit():
-        Rapport.create(
+        rapport = Rapport.create(
             owner_id=current_user.id,
             plaignant_last_name=form.plaignant_last_name.data,
             plaignant_first_name=form.plaignant_first_name.data,
@@ -29,6 +30,12 @@ def depot():
             witness=form.witness.data,
             description=form.description.data,
             proof=form.proof.data,
+        )
+        AuditLog.record(
+            action=AuditLog.ACTION_RAPPORT_CREATE,
+            actor_name=current_user.name,
+            actor_id=current_user.id,
+            details=f"{current_user.name} a déposé le rapport {rapport.reference}",
         )
         flash("Rapport envoyé à la commission.", "success")
         return redirect(url_for("ceam.mes_dossiers"))
@@ -137,6 +144,12 @@ def archiver(rapport_id):
     if rapport is None:
         abort(404)
     rapport.archive()
+    AuditLog.record(
+        action=AuditLog.ACTION_RAPPORT_ARCHIVE,
+        actor_name=current_user.name,
+        actor_id=current_user.id,
+        details=f"{current_user.name} a archivé le dossier {rapport.reference}",
+    )
     flash(f"Dossier {rapport.reference} archivé. Il n'est plus visible par le déclarant.", "success")
     return redirect(request.referrer or url_for("ceam.suivi"))
 
@@ -150,6 +163,12 @@ def supprimer(rapport_id):
         abort(404)
     reference = rapport.reference
     Rapport.delete(rapport_id)
+    AuditLog.record(
+        action=AuditLog.ACTION_RAPPORT_DELETE,
+        actor_name=current_user.name,
+        actor_id=current_user.id,
+        details=f"{current_user.name} a supprimé définitivement le dossier {reference}",
+    )
     flash(f"Dossier {reference} supprimé définitivement.", "success")
     return redirect(url_for("ceam.archives"))
 
