@@ -13,13 +13,28 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 _DISCORD_SNOWFLAKE = re.compile(r"^\d{17,20}$")
 
 
-def _access_denied(message):
+def _access_denied(message, invite_url=None):
     """Affiche une erreur sans renvoyer vers /auth/login (évite la boucle OAuth)."""
-    return render_template("auth/access_denied.html", title="Accès refusé", message=message)
+    return render_template(
+        "auth/access_denied.html", title="Accès refusé", message=message, invite_url=invite_url
+    )
 
 
 @bp.route("/login")
 def login():
+    """Page d'accueil / connexion : affiche un bouton, ne redirige plus
+    automatiquement vers Discord (voir login_discord)."""
+    if request.args.get("code"):
+        # Sécurité : si jamais quelqu'un atterrit ici avec un `code` OAuth
+        # (mauvais lien, ancien favori...), on le renvoie vers le vrai callback.
+        return redirect(url_for("auth.callback", **request.args))
+    return render_template("auth/login.html", title="Connexion")
+
+
+@bp.route("/login/discord")
+def login_discord():
+    """Redirection effective vers l'écran d'autorisation Discord, déclenchée
+    par le clic sur le bouton de la page de connexion."""
     params = {
         "client_id": current_app.config["DISCORD_CLIENT_ID"],
         "redirect_uri": current_app.config["DISCORD_REDIRECT_URI"],
@@ -50,22 +65,30 @@ def callback():
     guild_id = current_app.config.get("DISCORD_GUILD_ID")
     guild_nickname = None
 
-    if guild_id and _DISCORD_SNOWFLAKE.match(str(guild_id)):
+    if not guild_id:
+        current_app.logger.warning(
+            "DISCORD_GUILD_ID n'est pas défini : la vérification d'appartenance "
+            "au serveur HCT est DÉSACTIVÉE, n'importe quel compte Discord peut "
+            "se connecter. Définis DISCORD_GUILD_ID pour l'activer."
+        )
+    elif not _DISCORD_SNOWFLAKE.match(str(guild_id)):
+        current_app.logger.warning(
+            "DISCORD_GUILD_ID invalide (%r) : ce n'est pas un identifiant Discord "
+            "valide (17 à 20 chiffres) — vérif serveur ignorée.", guild_id
+        )
+    else:
         try:
             member = fetch_guild_member(access_token, guild_id)
         except requests.HTTPError as exc:
             if exc.response is not None and exc.response.status_code == 404:
                 return _access_denied(
-                    "Tu dois être membre du serveur Discord HCT pour accéder à la CEAM."
+                    "Tu dois être membre du serveur Discord HCT pour accéder à la CEAM.",
+                    invite_url="https://discord.gg/uxfcjrUKWc",
                 )
             return _access_denied(
                 "Impossible de vérifier ton appartenance au serveur Discord HCT. Réessaie plus tard."
             )
         guild_nickname = member.get("nick")
-    elif guild_id and not _DISCORD_SNOWFLAKE.match(str(guild_id)):
-        current_app.logger.warning(
-            "DISCORD_GUILD_ID invalide (%r) : vérif serveur ignorée en dev.", guild_id
-        )
 
     discord_id = int(discord_user["id"])
     # Priorité au pseudo serveur HCT ; à défaut (pas de pseudo défini sur le
