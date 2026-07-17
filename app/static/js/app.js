@@ -32,8 +32,9 @@
     });
   });
 
-  // ── Modal de confirmation (suppression définitive) ──
+  // ── Modal de confirmation (suppression et archivage) ──
   const confirmModal = document.querySelector("#confirm-modal");
+  const confirmTitle = document.querySelector("#confirm-modal-title");
   const confirmText = document.querySelector("#confirm-modal-text");
   const confirmBtn = document.querySelector("#confirm-modal-confirm");
   const cancelBtn = document.querySelector("#confirm-modal-cancel");
@@ -45,17 +46,46 @@
     formToSubmit = null;
   }
 
+  function openConfirmModal(options) {
+    formToSubmit = options.form;
+    if (confirmTitle) confirmTitle.textContent = options.title;
+    if (confirmText) confirmText.textContent = options.text;
+    if (confirmBtn) {
+      confirmBtn.textContent = options.confirmLabel;
+      confirmBtn.classList.toggle("btn-danger", options.danger);
+      confirmBtn.classList.toggle("btn-primary", !options.danger);
+    }
+    confirmModal?.classList.add("is-visible");
+    confirmModal?.setAttribute("aria-hidden", "false");
+  }
+
   document.querySelectorAll("[data-confirm-delete]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      formToSubmit = btn.closest("form[data-delete-form]");
       const reference = btn.dataset.reference || "ce dossier";
-      if (confirmText) {
-        confirmText.textContent =
+      openConfirmModal({
+        form: btn.closest("form[data-delete-form]"),
+        title: "Confirmer la suppression",
+        text:
           `Cette action est irréversible : le dossier ${reference} et toutes ses ` +
-          "données (réponses, historique, preuves) seront définitivement supprimés. Continuer ?";
-      }
-      confirmModal?.classList.add("is-visible");
-      confirmModal?.setAttribute("aria-hidden", "false");
+          "données (réponses, historique, preuves) seront définitivement supprimés. Continuer ?",
+        confirmLabel: "Supprimer définitivement",
+        danger: true,
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-archive]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const reference = btn.dataset.reference || "ce dossier";
+      openConfirmModal({
+        form: btn.closest("form[data-archive-form]"),
+        title: "Confirmer l'archivage",
+        text:
+          `Le dossier ${reference} ne sera plus visible par le déclarant et n'apparaîtra ` +
+          "plus que dans Archives. Continuer ?",
+        confirmLabel: "Archiver le dossier",
+        danger: false,
+      });
     });
   });
 

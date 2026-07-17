@@ -179,9 +179,9 @@
   <p class="prose-label">Administration du dossier</p>
   <div class="detail-admin-actions">
     {% if can_archive %}
-    <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}">
+    <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}" data-archive-form>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn-secondary">Archiver ce dossier</button>
+      <button type="button" class="btn-secondary" data-confirm-archive data-reference="{{ rapport.reference }}">Archiver ce dossier</button>
     </form>
     {% endif %}
     {% if can_delete %}

@@ -27,9 +27,9 @@
         {% if list_context == "suivi" %}
         <td>
           {% if current_user.role >= current_user.ROLE_PRESIDENT_CEAM %}
-          <form method="post" action="{{ url_for('ceam.archiver', rapport_id=r.id) }}" class="form-inline">
+          <form method="post" action="{{ url_for('ceam.archiver', rapport_id=r.id) }}" class="form-inline" data-archive-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn-secondary btn-sm">Archiver</button>
+            <button type="button" class="btn-secondary btn-sm" data-confirm-archive data-reference="{{ r.reference }}">Archiver</button>
           </form>
           {% endif %}
         </td>
