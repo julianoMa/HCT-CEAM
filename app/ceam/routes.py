@@ -1,9 +1,10 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from app.ceam.forms import InstructionForm, RapportForm, ReponseForm
+from app.ceam.forms import InstructionForm, RapportForm, ReglementForm, ReponseForm
 from app.models.audit_log import AuditLog
 from app.models.ceam import Rapport
+from app.models.reglement import Reglement
 from app.models.user import User
 from app.permissions import requires_role
 
@@ -184,3 +185,28 @@ def statistiques():
         status_labels=Rapport.STATUS_LABELS,
         seuil_relance=Rapport.STALE_NOUVEAU_JOURS,
     )
+
+
+@bp.route("/reglement", methods=["GET", "POST"])
+@login_required
+def reglement():
+    """Règlement CEAM : visible par tout le monde (déclarants inclus),
+    modifiable uniquement par les administrateurs."""
+    doc = Reglement.get()
+    is_admin = current_user.role >= User.ROLE_ADMIN
+
+    form = None
+    if is_admin:
+        form = ReglementForm(content=doc.content)
+        if form.validate_on_submit():
+            doc.save(form.content.data, current_user.name)
+            AuditLog.record(
+                action=AuditLog.ACTION_REGLEMENT_UPDATE,
+                actor_name=current_user.name,
+                actor_id=current_user.id,
+                details=f"{current_user.name} a modifié le règlement de la CEAM",
+            )
+            flash("Règlement mis à jour.", "success")
+            return redirect(url_for("ceam.reglement"))
+
+    return render_template("ceam/reglement.html", reglement=doc, form=form, is_admin=is_admin)

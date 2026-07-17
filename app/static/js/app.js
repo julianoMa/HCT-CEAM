@@ -75,4 +75,12 @@
     }
     closeConfirmModal();
   });
+
+  // ── Bascule générique d'affichage (ex: bouton "Modifier" du règlement) ──
+  document.querySelectorAll("[data-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = document.getElementById(btn.dataset.toggle);
+      target?.classList.toggle("is-hidden");
+    });
+  });
 })();

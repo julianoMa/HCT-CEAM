@@ -20,6 +20,7 @@ class AuditLog:
     ACTION_RAPPORT_DELETE = "rapport_delete"
     ACTION_STATUS_CHANGE = "status_change"
     ACTION_REPONSE_ADD = "reponse_add"
+    ACTION_REGLEMENT_UPDATE = "reglement_update"
 
     ACTION_LABELS = {
         ACTION_ROLE_CHANGE: "Changement de rôle",
@@ -28,6 +29,7 @@ class AuditLog:
         ACTION_RAPPORT_DELETE: "Suppression de rapport",
         ACTION_STATUS_CHANGE: "Changement de statut",
         ACTION_REPONSE_ADD: "Envoi de réponse",
+        ACTION_REGLEMENT_UPDATE: "Modification du règlement",
     }
 
     def __init__(self, id, action, actor_name, actor_id, details, created_at):

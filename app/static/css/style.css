@@ -1257,3 +1257,28 @@ body.sidebar-open {
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* ── Bascule générique ── */
+
+.is-hidden {
+  display: none !important;
+}
+
+/* ── Règlement (sections / articles) ── */
+
+.reglement-article {
+  padding: 0.5rem 0;
+}
+
+.reglement-article__title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.reglement-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 1rem 0;
+}

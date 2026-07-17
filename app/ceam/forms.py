@@ -40,3 +40,9 @@ class ReponseForm(FlaskForm):
     dossier et visible par le plaignant."""
     type = StringField("Type de réponse", validators=[DataRequired(), Length(max=100)])
     content = TextAreaField("Contenu de la réponse", validators=[DataRequired()])
+
+
+class ReglementForm(FlaskForm):
+    """Édition du règlement CEAM (texte structuré en sections/articles),
+    réservée aux administrateurs."""
+    content = TextAreaField("Contenu du règlement", validators=[Optional()])

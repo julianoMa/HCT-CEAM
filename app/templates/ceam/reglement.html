@@ -1,0 +1,61 @@
+{% from "macros/ui.html" import page_header %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("CEAM", "Règlement", "Règlement intérieur de la Commission d'Éthique des Affaires Médicales.") %}
+  {% if is_admin %}
+  <button type="button" class="btn btn-secondary" data-toggle="reglement-edition">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Modifier
+  </button>
+  {% endif %}
+{% endcall %}
+
+{% if reglement.updated_at_fr %}
+<p class="detail-meta" style="margin-top: -0.75rem; margin-bottom: 1.5rem;">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+  Dernière mise à jour le {{ reglement.updated_at_fr }} par {{ reglement.updated_by_name }}
+</p>
+{% endif %}
+
+{% if is_admin %}
+<div id="reglement-edition" class="form-card is-hidden" style="margin-bottom: 1.5rem;">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <div class="form-section">
+      <h2 class="form-section__title">Éditer le règlement</h2>
+      <p class="info-card__meta" style="margin-bottom: 0.75rem;">
+        Utilise <code>{{ "#" }} Titre de section</code> pour démarrer une section, et
+        <code>{{ "##" }} Titre d'article</code> pour démarrer un article à l'intérieur.
+        Tout le texte qui suit devient le contenu de cet article, jusqu'au prochain <code>{{ "#" }}</code> ou <code>{{ "##" }}</code>.
+      </p>
+      <div class="form-group">
+        {{ form.content(rows=20, placeholder="# Section 1 : Dispositions générales\n## Article 1 : Objet\nLe présent règlement a pour objet de…\n\n## Article 2 : Champ d'application\nIl s'applique à…") }}
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit">Enregistrer le règlement</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if reglement.sections %}
+{% for section in reglement.sections %}
+<div class="card card--padded" style="margin-bottom: 1.25rem;">
+  {% if section.title %}<h2 class="card__title" style="margin: 0 0 1.25rem;">{{ section.title }}</h2>{% endif %}
+  {% for article in section.articles %}
+  {% if not loop.first %}<hr class="reglement-divider">{% endif %}
+  <div class="reglement-article">
+    <h3 class="reglement-article__title">{{ article.title }}</h3>
+    <div class="prose rich-text">{{ article.content | rich_text }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card card--padded">
+  <p class="empty-state__text" style="margin: 0;">Le règlement n'a pas encore été renseigné.</p>
+</div>
+{% endif %}
+{% endblock %}

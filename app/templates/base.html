@@ -43,6 +43,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Mes dossiers
         </a>
+        <a href="{{ url_for('ceam.reglement') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.reglement' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          Règlement
+        </a>
 
         {% if current_user.role >= 1 %}
         <span class="sidebar__section-label">Commission</span>
