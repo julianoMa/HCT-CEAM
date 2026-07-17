@@ -68,33 +68,16 @@
   </div>
   <div class="form-actions">
     <button type="submit">Enregistrer le suivi interne</button>
+    <button type="button" class="btn-secondary" data-open-modal="reponse-modal">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      Envoyer une réponse
+    </button>
   </div>
 </form>
 {% else %}
 <div class="card card--padded" style="margin-bottom: 1rem;">
   <p class="prose-label">Statut du dossier</p>
   <p style="margin: 0;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
-</div>
-{% endif %}
-
-<!-- Historique des changements de statut : réservé à la commission -->
-{% if is_ceam_member %}
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label" style="margin-bottom: 1rem;">Historique des statuts</p>
-  {% if rapport.status_history_affichage %}
-  <div class="reponse-list">
-    {% for h in rapport.status_history_affichage | reverse %}
-    <div class="reponse-item">
-      <div class="reponse-item__header">
-        {{ status_badge(h.status_value, h.status_label) }}
-        <span class="reponse-item__meta">{{ h.author_name }} — {{ h.author_rank }} · {{ h.changed_at_fr }}</span>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="empty-state__text" style="margin: 0;">Aucun changement de statut enregistré.</p>
-  {% endif %}
 </div>
 {% endif %}
 
@@ -119,26 +102,47 @@
   {% endif %}
 </div>
 
+<!-- Historique des changements de statut : réservé à la commission -->
 {% if is_ceam_member %}
-<form method="post" class="form-card">
-  {{ reponse_form.hidden_tag() }}
-  <input type="hidden" name="action" value="reponse">
-  <div class="form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-      </span>
-      Envoyer une nouvelle réponse
-    </h2>
-    <div class="form-grid form-grid--single">
-      <div class="form-group">{{ reponse_form.type.label }}{{ reponse_form.type(placeholder="Ex: Issue de l'examen préliminaire, Procès-verbal, Délibéré…") }}</div>
-      <div class="form-group">{{ reponse_form.content.label }}{{ reponse_form.content(placeholder="Contenu transmis au plaignant…") }}</div>
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <p class="prose-label" style="margin-bottom: 1rem;">Historique des statuts</p>
+  {% if rapport.status_history_affichage %}
+  <div class="reponse-list">
+    {% for h in rapport.status_history_affichage | reverse %}
+    <div class="reponse-item">
+      <div class="reponse-item__header">
+        {{ status_badge(h.status_value, h.status_label) }}
+        <span class="reponse-item__meta">{{ h.author_name }} — {{ h.author_rank }} · {{ h.changed_at_fr }}</span>
+      </div>
     </div>
+    {% endfor %}
   </div>
-  <div class="form-actions">
-    <button type="submit">Envoyer la réponse</button>
+  {% else %}
+  <p class="empty-state__text" style="margin: 0;">Aucun changement de statut enregistré.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if is_ceam_member %}
+<div class="modal-overlay" id="reponse-modal" aria-hidden="true">
+  <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="reponse-modal-title">
+    <h2 id="reponse-modal-title" class="modal__title">Envoyer une nouvelle réponse</h2>
+    <form method="post">
+      {{ reponse_form.hidden_tag() }}
+      <input type="hidden" name="action" value="reponse">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        {{ reponse_form.type.label }}{{ reponse_form.type(placeholder="Ex: Issue de l'examen préliminaire, Procès-verbal, Délibéré…") }}
+      </div>
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        {{ reponse_form.content.label }}{{ reponse_form.content(rows=6, placeholder="Contenu transmis au plaignant…") }}
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit">Envoyer la réponse</button>
+      </div>
+    </form>
   </div>
-</form>
+</div>
 {% endif %}
 
 {% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}

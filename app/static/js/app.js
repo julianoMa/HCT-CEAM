@@ -66,7 +66,12 @@
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeConfirmModal();
+    if (event.key !== "Escape") return;
+    closeConfirmModal();
+    document.querySelectorAll(".modal-overlay.is-visible").forEach((overlay) => {
+      overlay.classList.remove("is-visible");
+      overlay.setAttribute("aria-hidden", "true");
+    });
   });
 
   confirmBtn?.addEventListener("click", () => {
@@ -74,6 +79,32 @@
       formToSubmit.submit();
     }
     closeConfirmModal();
+  });
+
+  // ── Modals génériques (ex: "Envoyer une réponse") ──
+  document.querySelectorAll("[data-open-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const modal = document.getElementById(btn.dataset.openModal);
+      modal?.classList.add("is-visible");
+      modal?.setAttribute("aria-hidden", "false");
+    });
+  });
+
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const modal = btn.closest(".modal-overlay");
+      modal?.classList.remove("is-visible");
+      modal?.setAttribute("aria-hidden", "true");
+    });
+  });
+
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        overlay.classList.remove("is-visible");
+        overlay.setAttribute("aria-hidden", "true");
+      }
+    });
   });
 
   // ── Bascule générique d'affichage (ex: bouton "Modifier" du règlement) ──

@@ -1323,6 +1323,17 @@ body.sidebar-open {
   box-shadow: var(--shadow-lg);
 }
 
+.modal--wide {
+  max-width: 560px;
+  text-align: left;
+}
+
+.modal--wide .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .modal__title {
   font-size: 1.1rem;
   font-weight: 700;
