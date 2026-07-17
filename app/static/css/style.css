@@ -558,6 +558,57 @@ a:hover { color: var(--accent-hover); }
   margin-bottom: 1rem;
 }
 
+/* ── Camembert (répartition affectation) ── */
+
+.pie-chart-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.pie-chart {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pie-chart__hole {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pie-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pie-chart-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pie-chart-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .info-card {
   background: var(--surface);
   border: 1px solid var(--border);

@@ -338,12 +338,22 @@ class Rapport:
 
         relances.sort(key=lambda r: r.send_date or "")
 
+        affectation_total = sum(affectation_counts.values())
+        if affectation_total:
+            affectation_percentages = {
+                a: round(affectation_counts[a] / affectation_total * 100, 1) for a in cls.AFFECTATIONS
+            }
+        else:
+            affectation_percentages = {a: 0 for a in cls.AFFECTATIONS}
+
         return {
             "total": len(rapports),
             "counts_by_status": counts_by_status,
             "delai_moyen_jours": (sum(delais) / len(delais)) if delais else None,
             "delai_moyen_dossiers": len(delais),
             "affectation_counts": affectation_counts,
+            "affectation_total": affectation_total,
+            "affectation_percentages": affectation_percentages,
             "relances": relances,
         }
 

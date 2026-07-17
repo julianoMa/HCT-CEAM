@@ -36,7 +36,25 @@
   </div>
   <div class="info-card">
     <p class="info-card__label">Répartition par affectation (plaignant)</p>
-    <p class="info-card__name">TMC : {{ stats.affectation_counts.get("TMC", 0) }} — NMH : {{ stats.affectation_counts.get("NMH", 0) }}</p>
+    {% if stats.affectation_total %}
+    <div class="pie-chart-row">
+      <div class="pie-chart" style="background: conic-gradient(var(--accent) 0% {{ stats.affectation_percentages['TMC'] }}%, var(--info-text) {{ stats.affectation_percentages['TMC'] }}% 100%);">
+        <div class="pie-chart__hole">{{ stats.affectation_total }}</div>
+      </div>
+      <div class="pie-chart-legend">
+        <div class="pie-chart-legend__item">
+          <span class="pie-chart-legend__dot" style="background: var(--accent);"></span>
+          TMC — {{ stats.affectation_counts.get("TMC", 0) }} ({{ stats.affectation_percentages['TMC'] }}%)
+        </div>
+        <div class="pie-chart-legend__item">
+          <span class="pie-chart-legend__dot" style="background: var(--info-text);"></span>
+          NMH — {{ stats.affectation_counts.get("NMH", 0) }} ({{ stats.affectation_percentages['NMH'] }}%)
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p class="info-card__meta" style="margin: 0.5rem 0 0;">Aucune donnée pour le moment.</p>
+    {% endif %}
   </div>
 </div>
 
