@@ -31,6 +31,11 @@ class Config:
     # particulière requise, juste partager un serveur avec les utilisateurs).
     DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 
+    # Vérification de connexion Firestore à chaque démarrage (voir
+    # app/startup_check.py). Mettre à "0" pour la désactiver si la latence
+    # ajoutée au cold start devient gênante.
+    STARTUP_HEALTHCHECK = os.environ.get("STARTUP_HEALTHCHECK", "1")
+
     DISCORD_AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize"
     DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
     DISCORD_API_BASE_URL = "https://discord.com/api"
