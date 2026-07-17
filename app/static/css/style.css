@@ -51,6 +51,52 @@
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+[data-theme="dark"] {
+  --sidebar-bg: #12161f;
+  --sidebar-border: #262e3f;
+  --sidebar-text: #94a1b8;
+  --sidebar-text-active: #f1f5f9;
+  --sidebar-accent: #7c74fa;
+
+  --bg: #0b0f18;
+  --bg-accent: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 116, 250, 0.16), transparent);
+  --surface: #171d2b;
+  --surface-elevated: #1c2333;
+  --border: #2a3245;
+  --border-subtle: #212838;
+
+  --text: #f1f5f9;
+  --text-secondary: #b7c0d1;
+  --text-muted: #7c8798;
+
+  --accent: #7c74fa;
+  --accent-hover: #9089fb;
+  --accent-soft: rgba(124, 116, 250, 0.18);
+  --accent-gradient: linear-gradient(135deg, #6d63f5 0%, #a78bfa 100%);
+
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --success-text: #4ade80;
+  --success-border: rgba(34, 197, 94, 0.35);
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --warning-text: #fbbf24;
+  --warning-border: rgba(245, 158, 11, 0.35);
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-text: #f87171;
+  --danger-border: rgba(239, 68, 68, 0.35);
+  --info-bg: rgba(59, 130, 246, 0.15);
+  --info-text: #60a5fa;
+  --info-border: rgba(59, 130, 246, 0.35);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.3), 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+
+/* Deux statuts utilisent des couleurs codées en dur (pas des variables) :
+   on les ajuste explicitement pour le thème sombre. */
+[data-theme="dark"] .status-0 { background: #2a3245; color: #cbd5e1; border-color: #3a4358; }
+[data-theme="dark"] .status-3 { background: rgba(251, 146, 60, 0.15); color: #fb923c; border-color: rgba(251, 146, 60, 0.35); }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
@@ -117,10 +163,19 @@ a:hover { color: var(--accent-hover); }
   margin-bottom: 0.5rem;
 }
 
+.sidebar__brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
 .sidebar__brand-logo {
   display: block;
-  flex-shrink: 0;
-  height: 36px;
+  height: 28px;
   width: auto;
   object-fit: contain;
 }
@@ -264,6 +319,34 @@ a:hover { color: var(--accent-hover); }
 .sidebar__logout:hover {
   background: rgba(239, 68, 68, 0.18);
   color: #fca5a5;
+}
+
+.sidebar__theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-text);
+  transition: all var(--transition);
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  appearance: none;
+  font-family: inherit;
+}
+
+.sidebar__theme-toggle:hover {
+  background: var(--border-subtle);
+  color: var(--sidebar-text-active);
+}
+
+.sidebar__theme-toggle span {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .main {

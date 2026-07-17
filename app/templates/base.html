@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CEAM{% if title %} — {{ title }}{% endif %}</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem("ceam-theme");
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var theme = saved || (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -26,7 +34,9 @@
 
     <aside class="sidebar">
       <div class="sidebar__brand">
-        <img src="https://www.zupimages.net/up/22/30/as83.png" alt="CEAM" class="sidebar__brand-logo">
+        <div class="sidebar__brand-logo-wrap">
+          <img src="https://www.zupimages.net/up/22/30/as83.png" alt="CEAM" class="sidebar__brand-logo">
+        </div>
         <div class="sidebar__brand-text">
           <span class="sidebar__brand-line">Commission Éthique des</span>
           <span class="sidebar__brand-line">Affaires Médicales</span>
@@ -34,7 +44,7 @@
       </div>
 
       <nav class="sidebar__nav">
-        <span class="sidebar__section-label">Déclaration</span>
+        <span class="sidebar__section-label">Espace déclarant</span>
         <a href="{{ url_for('ceam.depot') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.depot' }}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           Dépôt
@@ -90,6 +100,9 @@
             <div class="sidebar__user-name">{{ current_user.name }}</div>
             <div class="sidebar__user-role">{{ current_user.role_label }}</div>
           </div>
+          <button type="button" class="sidebar__theme-toggle" id="theme-toggle" title="Changer de thème" aria-label="Changer de thème">
+            <span id="theme-toggle-emoji" aria-hidden="true">🌙</span>
+          </button>
           <a href="{{ url_for('auth.logout') }}" class="sidebar__logout" title="Se déconnecter">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
           </a>

@@ -83,4 +83,24 @@
       target?.classList.toggle("is-hidden");
     });
   });
+
+  // ── Thème clair / sombre ──
+  const themeToggle = document.querySelector("#theme-toggle");
+  const themeEmoji = document.querySelector("#theme-toggle-emoji");
+
+  function updateThemeIcon() {
+    if (!themeEmoji) return;
+    const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    themeEmoji.textContent = current === "dark" ? "☀️" : "🌙";
+  }
+
+  updateThemeIcon();
+
+  themeToggle?.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("ceam-theme", next);
+    updateThemeIcon();
+  });
 })();
