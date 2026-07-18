@@ -1,134 +1,144 @@
-# CEAM — Commission d'Éthique des Affaires Médicales
+# HCT-CEAM
 
-Application Flask pour la gestion des rapports d'incidents et de plaintes
-entre membres du personnel HCT (TMC / NMH), avec connexion Discord et
-stockage sur **Firebase Firestore**.
+Plateforme interne de gestion des rapports d'incidents pour la **Commission d'Éthique des Affaires Médicales (CEAM)** du serveur de roleplay HCT. Permet au personnel des établissements TMC et NMH de déposer des rapports, à la commission de les instruire, et à tout le monde de suivre l'avancement en temps réel — sur le site et sur Discord.
 
-## Installation
+## Fonctionnalités
+
+### Authentification
+- Connexion via Discord OAuth2, avec vérification de l'appartenance au serveur HCT
+- Récupération du pseudo du serveur (pas le nom Discord global) et de l'avatar
+- Session longue durée (30 jours)
+
+### Espace personnel (déclarant)
+- **Dépôt d'un rapport** : formulaire en 5 sections (Plaignant, Mis en cause, Circonstances de l'incident, Exposé des faits, Témoins), case de certification sur l'honneur obligatoire
+- **Preuves** : liens et fichiers (PDF/images) ajoutés via un modal dédié, avec compression automatique des images côté navigateur avant l'envoi
+- **Mes dossiers** : suivi de ses propres rapports, plus ceux où l'on a été ajouté comme tiers par la commission
+- **Notifications** : in-app (cloche + historique + marquage lu/non lu) et par MP Discord (embeds), à chaque étape clé (rapport envoyé, changement de statut, nouvelle réponse, ajout en tant que tiers)
+- **Export PDF** d'un dossier individuel (infos, historique, réponses)
+- **Règlement CEAM** et **page d'accueil** pédagogique, consultables par tous
+
+### Espace commission (CEAM)
+- **Suivi CEAM** : tous les dossiers non archivés, avec recherche (référence/nom), filtre par statut, et pagination
+- **Suivi interne** (statut + note privée) séparé des **réponses officielles** envoyées au déclarant (accusé de réception automatique, puis réponses libres avec pièces jointes)
+- **Historique des statuts** horodaté
+- **Gestion des tiers** : donner l'accès à un dossier à une personne supplémentaire (témoin, etc.), qui reçoit alors les mêmes notifications que le déclarant
+- **Archivage** (président) et **suppression définitive** (admin), avec confirmation
+- **Statistiques** : délai moyen de traitement, répartition TMC/NMH, alerte de relance sur les dossiers stagnants
+- **Prévisualisation des pièces jointes** dans un modal (image ou PDF affiché directement, bouton de téléchargement séparé)
+
+### Administration
+- Gestion des utilisateurs et des rôles
+- **Journal d'activité** : toutes les actions sensibles (rôles, dépôts, statuts, réponses, tiers, règlement), avec recherche par auteur/détails, filtre par type d'action, et pagination
+
+### Interface
+- Mode sombre / clair (persisté, sans flash au chargement)
+- Rendu enrichi des liens (images, YouTube) dans les descriptions et réponses
+
+## Rôles
+
+| Rôle | Valeur | Peut |
+|---|---|---|
+| Déclarant | 0 | Déposer des rapports, suivre les siens |
+| Membre CEAM | 1 | Instruire les dossiers, répondre, gérer les tiers |
+| Président CEAM | 2 | + Archiver un dossier |
+| Administrateur | 3 | + Supprimer un dossier, gérer les rôles, voir le journal d'activité |
+
+## Stack technique
+
+- **Backend** : Flask, Flask-Login, Flask-WTF
+- **Base de données** : Firestore (Firebase) — y compris le stockage des pièces jointes en base64 (pas de Firebase Storage, qui nécessite un plan payant)
+- **Authentification** : Discord OAuth2
+- **Notifications** : bot Discord (MP en embeds) + notifications in-app
+- **Export PDF** : fpdf2 (pur Python, sans dépendance système — compatible hébergement serverless)
+- **Déploiement** : Vercel
+
+## Structure du projet
+
+```
+app/
+├── __init__.py              # Factory Flask, context processor (compteur de notifications)
+├── config.py                 # Configuration (variables d'environnement)
+├── extensions.py             # Initialisation Firestore
+├── permissions.py            # Décorateur requires_role
+├── rich_text.py               # Filtre Jinja pour liens/images/YouTube
+├── notifications.py          # Envoi de MP Discord (embeds)
+├── startup_check.py          # Vérification des variables d'env + connexion Firestore au démarrage
+├── storage.py                 # Stockage des pièces jointes (base64 dans Firestore)
+├── pdf_export.py               # Génération du PDF d'un dossier
+├── models/
+│   ├── ceam.py                # Modèle Rapport (dossiers)
+│   ├── user.py                 # Modèle User
+│   ├── notification.py         # Modèle Notification (in-app)
+│   ├── audit_log.py            # Journal d'activité
+│   └── reglement.py            # Règlement CEAM (contenu éditable)
+├── auth/                       # Routes et logique Discord OAuth2
+├── ceam/                       # Routes et formulaires métier (dépôt, suivi, détail, notifications...)
+├── admin/                      # Routes d'administration (utilisateurs, journal)
+├── templates/                  # Templates Jinja (base, ceam/, auth/, admin/, macros/)
+└── static/
+    ├── css/style.css
+    └── js/app.js
+
+pyproject.toml                  # Dépendances + config Vercel (entrypoint: run:app)
+run.py                          # Point d'entrée WSGI
+```
+
+## Installation locale
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate        # ou venv\Scripts\activate sous Windows
+git clone https://github.com/julianoMa/HCT-CEAM.git
+cd HCT-CEAM
 pip install -r requirements.txt
 ```
 
-Copie `.env.example` en `.env` et remplis les valeurs :
+Créer un fichier `.env` à la racine avec au minimum :
 
-```bash
-cp .env.example .env
+```env
+SECRET_KEY=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+DISCORD_REDIRECT_URI=http://localhost:5000/auth/callback
+DISCORD_GUILD_ID=
+DISCORD_BOT_TOKEN=
+FIREBASE_CREDENTIALS_JSON=
+STARTUP_HEALTHCHECK=1
 ```
 
-### Configurer Firebase
+- `FIREBASE_CREDENTIALS_JSON` : le contenu JSON complet de la clé de service Firebase, sur une seule ligne
+- `DISCORD_BOT_TOKEN` : nécessaire pour les MP Discord (notifications) — le bot doit être invité sur le serveur HCT
+- `STARTUP_HEALTHCHECK=0` pour désactiver la vérification au démarrage
 
-1. Dans la [Console Firebase](https://console.firebase.google.com/), crée
-   un projet (ou utilise l'existant) et active **Firestore Database**.
-2. Paramètres du projet > Comptes de service > "Générer une nouvelle clé
-   privée" → télécharge le fichier JSON.
-3. Place ce fichier à la racine du projet (ex: `firebase-credentials.json`)
-   et renseigne son chemin dans `FIREBASE_CREDENTIALS_PATH`.
-4. **Ne commite jamais ce fichier** (ajoute-le à `.gitignore`) : il donne un
-   accès complet à ta base Firestore.
-
-### Configurer Discord
-
-- `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` : créés depuis le
-  [Discord Developer Portal](https://discord.com/developers/applications),
-  onglet OAuth2.
-- `DISCORD_REDIRECT_URI` : doit être ajoutée dans "Redirects" côté Discord,
-  exactement identique (ex: `http://localhost:5000/auth/callback`).
-- `DISCORD_GUILD_ID` : identifiant du serveur Discord HCT, pour vérifier
-  que la personne est toujours membre (mode développeur Discord activé,
-  clic droit sur le serveur > Copier l'identifiant).
-
-## Lancer le site
+Lancer en local :
 
 ```bash
 flask run
 ```
 
-Le site est accessible sur http://localhost:5000. Le premier utilisateur
-qui se connecte via Discord est créé automatiquement dans la collection
-Firestore `utilisateurs`, avec le rôle `Déclarant` (0). Pour lui donner un
-rôle supérieur au tout début (aucun administrateur n'existe tant que
-personne n'a le rôle 3), modifie-le directement dans la Console Firebase :
-Firestore Database > collection `utilisateurs` > document correspondant >
-champ `role` → mets `3`.
+## Déploiement (Vercel)
 
-## Structure du projet
+Le déploiement utilise `pyproject.toml` (pas `requirements.txt`) :
 
-- `app/models/` — `User` et `Rapport`, classes Python qui encapsulent les
-  accès aux collections Firestore `utilisateurs` et `ceam`, fidèles au
-  schéma de données fourni.
-- `app/firestore_utils.py` — génère des identifiants entiers auto-
-  incrémentés (`id` int64) via un compteur Firestore transactionnel,
-  puisque Firestore n'a pas d'auto-incrément natif comme une base SQL.
-- `app/auth/` — connexion OAuth2 Discord (login, callback, logout).
-- `app/ceam/` — dépôt de rapport, mes dossiers, suivi, archives,
-  statistiques, détail d'un dossier.
-- `app/admin/` — gestion des rôles des utilisateurs.
-- `app/permissions.py` — décorateur `@requires_role(niveau)` pour
-  protéger les routes selon le rôle (0 à 3).
-- `app/templates/` — gabarits Jinja2, style "institutionnel sobre"
-  (blanc / gris / bleu marine).
-
-## Organisation des données dans Firestore
-
-```
-utilisateurs/{id}          → discord_id, name, role
-ceam/{id}                  → plaignant_*, concerne_*, event_date, event_hour,
-                              witness, description, proof, send_date,
-                              owner_id, status, note, conclusion
-counters/{utilisateurs|ceam} → value (compteur interne, ne pas modifier)
+```toml
+[tool.vercel]
+entrypoint = "run:app"
 ```
 
-Les champs `event_date`, `event_hour` et `send_date` sont stockés comme
-des **chaînes** (conformément au schéma fourni), au format ISO
-(`YYYY-MM-DD`, `HH:MM`, `YYYY-MM-DDTHH:MM`) pour rester triables. Les
-templates les affichent au format français via les propriétés
-`event_date_fr` / `send_date_fr`.
+Toutes les variables d'environnement ci-dessus doivent être configurées dans les paramètres du projet Vercel.
 
-## Rôles (rappel)
+## Modèle de données (Firestore)
 
-| Valeur | Rôle             | Peut faire |
-|--------|------------------|------------|
-| 0      | Déclarant        | Déposer un rapport, voir ses dossiers |
-| 1      | Membre CEAM      | + Suivi, notes internes, changer le statut |
-| 2      | Président CEAM   | + Clôturer un dossier |
-| 3      | Administrateur   | + Gérer les rôles des utilisateurs |
+| Collection | Contenu |
+|---|---|
+| `ceam` | Les dossiers (rapports), avec réponses, historique de statuts, tiers, pièces jointes en base64 |
+| `utilisateurs` | Profils (nom, rôle, avatar, Discord ID) |
+| `notifications` | Notifications in-app par utilisateur |
+| `logs` | Journal d'activité |
+| `config` | Contenu du règlement CEAM |
+| `attachments` | Données brutes des pièces jointes (base64) |
+| `counters` | Compteurs pour les identifiants incrémentaux |
 
-## Statuts des dossiers (rappel, valeurs 0 à 4)
+## Points d'attention
 
-0. Nouveau
-1. En cours d'instruction
-2. Informations complémentaires demandées
-3. En attente de décision
-4. Clôturé
-
-⚠️ Ces libellés sont une proposition — à confirmer/ajuster selon vos
-besoins réels, le champ en base n'est qu'un entier de 0 à 4.
-
-## Index Firestore
-
-Certaines requêtes combinant un filtre `where` et un `order_by` sur un
-champ différent peuvent demander la création d'un index composite.
-Si une requête échoue avec une erreur du type "The query requires an
-index", Firestore fournit directement dans le message un lien pour le
-créer en un clic dans la Console.
-
-## Points d'attention à traiter avant mise en production
-
-1. **Noms séparés du plaignant/concerné.** Le modèle `User` ne stocke
-   qu'un champ `name` unique, alors que chaque rapport demande nom/prénom
-   séparés pour le plaignant et le concerné. Le formulaire de dépôt actuel
-   les fait donc ressaisir manuellement plutôt que de les pré-remplir
-   automatiquement depuis le compte connecté.
-2. **Règles de sécurité Firestore.** Ce projet utilise le SDK Admin côté
-   serveur (accès total, contourne les règles de sécurité Firestore) — il
-   n'y a donc rien à configurer côté règles tant que seul ce backend Flask
-   accède à la base. Si un jour le frontend accède directement à Firestore
-   (SDK client), il faudra écrire des règles de sécurité strictes basées
-   sur le rôle de l'utilisateur.
-3. **Compteur d'ID.** Le compteur auto-incrémenté (`counters/*`) crée un
-   point de contention en cas de très fort volume d'écritures simultanées
-   (rare ici vu l'usage interne). Si besoin d'un fort débit un jour, migrer
-   vers les ID auto-générés natifs de Firestore.
+- **Index composites Firestore** : certaines requêtes (recherche combinée à un tri, ou `array_contains` avec égalité) demandent la création d'un index composite. Si une erreur `FailedPrecondition` apparaît en console, cliquer sur le lien fourni pour créer l'index — l'opération prend quelques minutes.
+- **Limite des pièces jointes** : 650 Ko par fichier (contrainte du plan Firestore gratuit, encodage base64 inclus). Les images sont automatiquement compressées côté navigateur avant l'envoi ; les PDF ne le sont pas.
+- **Fuseau horaire** : toutes les dates sont actuellement stockées et affichées en UTC, sans conversion.
