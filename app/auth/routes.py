@@ -6,6 +6,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import login_required, login_user, logout_user
 
 from app.auth.discord import build_avatar_url, exchange_code_for_token, fetch_discord_user, fetch_guild_member
+from app.discord_roles import detect_affectation, detect_grade
 from app.models.user import User
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -64,6 +65,7 @@ def callback():
 
     guild_id = current_app.config.get("DISCORD_GUILD_ID")
     guild_nickname = None
+    guild_role_ids = []
 
     if not guild_id:
         current_app.logger.warning(
@@ -89,6 +91,7 @@ def callback():
                 "Impossible de vérifier ton appartenance au serveur Discord HCT. Réessaie plus tard."
             )
         guild_nickname = member.get("nick")
+        guild_role_ids = member.get("roles", [])
 
     discord_id = int(discord_user["id"])
     # Priorité au pseudo serveur HCT ; à défaut (pas de pseudo défini sur le
@@ -96,14 +99,24 @@ def callback():
     # compte Discord.
     name = guild_nickname or discord_user.get("global_name") or discord_user["username"]
     avatar_url = build_avatar_url(discord_user)
+    affectation = detect_affectation(guild_role_ids)
+    rank = detect_grade(guild_role_ids)
 
     user = User.get_by_discord_id(discord_id)
 
     if user is None:
-        user = User.create(discord_id=discord_id, name=name, role=User.ROLE_DECLARANT, avatar_url=avatar_url)
-    elif user.name != name or user.avatar_url != avatar_url:
-        # Garde le pseudo et la photo de profil à jour à chaque connexion.
-        user.update_profile(name, avatar_url)
+        user = User.create(
+            discord_id=discord_id, name=name, role=User.ROLE_DECLARANT, avatar_url=avatar_url,
+            affectation=affectation, rank=rank,
+        )
+    elif (
+        user.name != name or user.avatar_url != avatar_url
+        or user.affectation != affectation or user.rank != rank
+    ):
+        # Garde le pseudo, la photo, l'affectation et le grade à jour à
+        # chaque connexion (ces deux derniers sont déduits des rôles
+        # Discord actuels, voir app/discord_roles.py).
+        user.update_profile(name, avatar_url, affectation, rank)
 
     login_user(user, remember=True)
     session.permanent = True

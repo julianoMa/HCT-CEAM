@@ -19,6 +19,23 @@ bp = Blueprint("ceam", __name__, url_prefix="/ceam")
 @login_required
 def depot():
     form = RapportForm()
+    if request.method == "GET":
+        # Pré-remplissage à partir des rôles Discord de la personne (voir
+        # app/discord_roles.py), synchronisés à chaque connexion. Reste
+        # vide si aucun rôle de grade/affectation connu n'a été détecté.
+        if current_user.rank:
+            form.plaignant_rank.data = current_user.rank
+        if current_user.affectation:
+            form.plaignant_affectation.data = current_user.affectation
+        # Nom/prénom déduits du pseudo du serveur HCT (ex: "Jean Dupont"),
+        # en supposant l'ordre "Prénom Nom". Simple pré-remplissage,
+        # modifiable si le pseudo ne suit pas exactement ce format (surnom,
+        # grade inclus dans le pseudo, nom composé...).
+        if current_user.name:
+            prenom, _, nom = current_user.name.strip().partition(" ")
+            form.plaignant_first_name.data = prenom
+            if nom:
+                form.plaignant_last_name.data = nom
     if form.validate_on_submit():
         rapport = Rapport.create(
             owner_id=current_user.id,

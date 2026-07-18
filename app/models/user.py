@@ -21,12 +21,18 @@ class User(UserMixin):
         ROLE_ADMIN: "Administrateur",
     }
 
-    def __init__(self, id, discord_id, name, role, avatar_url=None):
+    def __init__(self, id, discord_id, name, role, avatar_url=None, affectation=None, rank=None):
         self.id = id
         self.discord_id = discord_id
         self.name = name
         self.role = role
         self.avatar_url = avatar_url
+        # Déduits des rôles Discord à chaque connexion (voir
+        # app/discord_roles.py) — utilisés pour pré-remplir le formulaire
+        # de dépôt. None si la personne n'a aucun rôle de grade/affectation
+        # connu.
+        self.affectation = affectation
+        self.rank = rank
 
     # --- Flask-Login ---
     def get_id(self):
@@ -43,6 +49,8 @@ class User(UserMixin):
             "name": self.name,
             "role": self.role,
             "avatar_url": self.avatar_url,
+            "affectation": self.affectation,
+            "rank": self.rank,
         }
 
     @classmethod
@@ -54,6 +62,8 @@ class User(UserMixin):
             name=data["name"],
             role=data["role"],
             avatar_url=data.get("avatar_url"),
+            affectation=data.get("affectation"),
+            rank=data.get("rank"),
         )
 
     # --- Accès Firestore ---
@@ -71,10 +81,13 @@ class User(UserMixin):
         return cls._from_doc(docs[0]) if docs else None
 
     @classmethod
-    def create(cls, discord_id, name, role=ROLE_DECLARANT, avatar_url=None):
+    def create(cls, discord_id, name, role=ROLE_DECLARANT, avatar_url=None, affectation=None, rank=None):
         db = get_db()
         new_id = next_id(db, COLLECTION)
-        user = cls(id=new_id, discord_id=int(discord_id), name=name, role=role, avatar_url=avatar_url)
+        user = cls(
+            id=new_id, discord_id=int(discord_id), name=name, role=role,
+            avatar_url=avatar_url, affectation=affectation, rank=rank,
+        )
         db.collection(COLLECTION).document(str(new_id)).set(user.to_dict())
         return user
 
@@ -97,15 +110,21 @@ class User(UserMixin):
         db.collection(COLLECTION).document(str(self.id)).update({"role": new_role})
         self.role = new_role
 
-    def update_profile(self, name, avatar_url):
-        """Garde le pseudo et la photo de profil synchronisés avec Discord,
-        appelé à chaque connexion (voir auth/routes.py)."""
+    def update_profile(self, name, avatar_url, affectation=None, rank=None):
+        """Garde le pseudo, la photo de profil, l'affectation et le grade
+        synchronisés avec Discord, appelé à chaque connexion (voir
+        auth/routes.py). L'affectation et le grade sont déduits des rôles
+        Discord actuels de la personne — s'ils ne correspondent plus à
+        aucun rôle connu, ils sont remis à None plutôt que de garder une
+        ancienne valeur potentiellement obsolète."""
         db = get_db()
         db.collection(COLLECTION).document(str(self.id)).update(
-            {"name": name, "avatar_url": avatar_url}
+            {"name": name, "avatar_url": avatar_url, "affectation": affectation, "rank": rank}
         )
         self.name = name
         self.avatar_url = avatar_url
+        self.affectation = affectation
+        self.rank = rank
 
     def __repr__(self):
         return f"<User {self.name} ({self.role_label})>"
