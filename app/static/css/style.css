@@ -1010,6 +1010,8 @@ select {
 /* ── Buttons ── */
 
 button, .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
