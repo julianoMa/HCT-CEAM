@@ -1571,6 +1571,11 @@ body.sidebar-open {
 
 .reglement-article {
   padding: 0.5rem 0;
+  scroll-margin-top: 80px;
+}
+
+.reglement-section {
+  scroll-margin-top: 80px;
 }
 
 .reglement-article__title {
@@ -1584,6 +1589,50 @@ body.sidebar-open {
   border: none;
   border-top: 1px solid var(--border-subtle);
   margin: 1rem 0;
+}
+
+/* ── Sommaire du règlement (auto-généré, interactif) ── */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.reglement-toc__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.reglement-toc__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reglement-toc__section-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  margin-bottom: 2px;
+}
+
+.reglement-toc__section-link:hover {
+  color: var(--accent);
+}
+
+.reglement-toc__article-link {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding-left: 10px;
+  border-left: 2px solid var(--border-subtle);
+  transition: all var(--transition);
+}
+
+.reglement-toc__article-link:hover {
+  color: var(--accent);
+  border-left-color: var(--accent);
 }
 
 /* ── Notifications ── */

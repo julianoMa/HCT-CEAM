@@ -49,9 +49,23 @@ class Reglement:
             return self.updated_at
 
     @property
+    def preambule(self):
+        """Texte libre tapé avant le premier '#' ou '##' — affiché avant le
+        sommaire, jamais inclus dedans (il n'a pas de titre)."""
+        lines = []
+        for raw_line in self.content.splitlines():
+            line = raw_line.rstrip()
+            if _SECTION_RE.match(line) or _ARTICLE_RE.match(line):
+                break
+            lines.append(raw_line)
+        return "\n".join(lines).strip()
+
+    @property
     def sections(self):
         """Parse le texte brut en sections contenant leurs articles :
-        [{"title": str, "articles": [{"title": str, "content": str}, ...]}]."""
+        [{"title": str, "articles": [{"title": str, "content": str}, ...]}].
+        Le préambule (avant le premier titre) est exclu d'ici, voir la
+        propriété `preambule` ci-dessus."""
         sections = []
         current_section = None
         current_article = None
