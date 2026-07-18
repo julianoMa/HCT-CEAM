@@ -110,7 +110,7 @@ def suivi():
     search_query = request.args.get("q", "")
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
-        limit = 25
+        limit = 10
     page = request.args.get("page", type=int) or 1
 
     rapports = Rapport.query_open(status_filter=status_filter)
@@ -141,7 +141,7 @@ def archives():
     search_query = request.args.get("q", "")
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
-        limit = 25
+        limit = 10
     page = request.args.get("page", type=int) or 1
 
     rapports = Rapport.query_archived()
@@ -381,7 +381,7 @@ def piece_jointe(rapport_id, attachment_id):
 def notifications():
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
-        limit = 25
+        limit = 10
     page = request.args.get("page", type=int) or 1
 
     items = Notification.list_for_user(current_user.id)

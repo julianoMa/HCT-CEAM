@@ -52,7 +52,7 @@ def logs():
     action_filter = request.args.get("action", "")
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
-        limit = 25
+        limit = 10
     page = request.args.get("page", type=int) or 1
 
     entries = AuditLog.list_recent()
