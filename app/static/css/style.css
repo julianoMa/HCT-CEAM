@@ -980,6 +980,13 @@ select {
   border-top: 1px solid var(--border);
 }
 
+.form-actions--plain {
+  background: none;
+  border-top: none;
+  padding: 0.5rem 0;
+  justify-content: center;
+}
+
 .form-inline {
   display: flex;
   align-items: center;
@@ -1825,7 +1832,7 @@ body.sidebar-open {
   height: 18px;
   margin-top: 2px;
   flex-shrink: 0;
-  accent-color: var(--accent);
+  accent-color: var(--success-text);
   cursor: pointer;
 }
 
