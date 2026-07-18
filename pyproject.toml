@@ -9,6 +9,7 @@ dependencies = [
     "firebase-admin==6.5.0",
     "requests==2.32.3",
     "python-dotenv==1.0.1",
+    "fpdf2==2.8.7",
 ]
 
 [tool.vercel]

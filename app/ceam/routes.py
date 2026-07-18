@@ -8,6 +8,7 @@ from app.models.ceam import Rapport
 from app.models.notification import Notification
 from app.models.reglement import Reglement
 from app.models.user import User
+from app.pdf_export import generate_dossier_pdf
 from app.permissions import requires_role
 from app.storage import fetch_attachment, upload_reponse_attachment
 
@@ -327,3 +328,27 @@ def accueil():
     """Page d'accueil pédagogique : présentation de la CEAM, son rôle, ses
     missions, et le fonctionnement général du traitement des dossiers."""
     return render_template("ceam/accueil.html")
+
+
+@bp.route("/dossier/<int:rapport_id>/export-pdf")
+@login_required
+def export_pdf(rapport_id):
+    """Export PDF d'un dossier (infos, historique des statuts, réponses),
+    avec les mêmes règles d'accès que la page de détail."""
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+
+    is_owner = rapport.owner_id == current_user.id
+    is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
+    if not is_owner and not is_ceam_member:
+        abort(403)
+    if rapport.archived and not is_ceam_member:
+        abort(403)
+
+    pdf_bytes = generate_dossier_pdf(rapport)
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{rapport.reference}.pdf"'},
+    )

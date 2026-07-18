@@ -8,7 +8,13 @@
 </a>
 
 {% call page_header(rapport.reference, rapport.plaignant_first_name ~ " " ~ rapport.plaignant_last_name ~ " c/ " ~ rapport.concerne_first_name ~ " " ~ rapport.concerne_last_name) %}
-  {{ status_badge(rapport.status, rapport.status_label) }}
+  <div style="display: flex; align-items: center; gap: 10px;">
+    {{ status_badge(rapport.status, rapport.status_label) }}
+    <a href="{{ url_for('ceam.export_pdf', rapport_id=rapport.id) }}" class="btn-secondary btn-sm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+      Exporter en PDF
+    </a>
+  </div>
 {% endcall %}
 
 {% if rapport.archived %}

@@ -4,3 +4,4 @@ Flask-WTF==1.2.1
 firebase-admin==6.5.0
 requests==2.32.3
 python-dotenv==1.0.1
+fpdf2==2.8.7
