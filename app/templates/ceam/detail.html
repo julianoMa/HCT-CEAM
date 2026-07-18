@@ -190,8 +190,8 @@
       </div>
       <div class="form-group" style="margin-bottom: 1.25rem;">
         {{ reponse_form.attachments.label }}
-        {{ reponse_form.attachments(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp") }}
-        <p class="info-card__meta" style="margin-top: 4px;">PDF ou images, plusieurs fichiers possibles, 650 Ko max par fichier.</p>
+        {{ reponse_form.attachments(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp", **{"data-compress-images": ""}) }}
+        <p class="info-card__meta" style="margin-top: 4px;">PDF ou images, plusieurs fichiers possibles. Les images sont automatiquement compressées avant l'envoi si besoin (650 Ko max par fichier).</p>
       </div>
       <div class="modal__actions">
         <button type="button" class="btn-secondary" data-close-modal>Annuler</button>

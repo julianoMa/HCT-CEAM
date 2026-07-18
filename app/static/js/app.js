@@ -164,4 +164,82 @@
     localStorage.setItem("ceam-theme", next);
     updateThemeIcon();
   });
+
+  // ── Compression d'images avant envoi ──
+  // Les pièces jointes sont stockées dans Firestore (limite : 1 Mo par
+  // document, donc 650 Ko max par fichier une fois encodé). Une photo de
+  // téléphone dépasse très souvent ça en brut : on la redimensionne et on
+  // la réencode en JPEG côté navigateur avant l'envoi, pour que l'immense
+  // majorité des photos passent sans que la personne ait à s'en soucier.
+  // Les PDF et les GIF (animation) ne sont jamais touchés.
+  const MAX_IMAGE_DIMENSION = 1600;
+  const TARGET_MAX_BYTES = 650 * 1024;
+
+  function compressImageFile(file) {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith("image/") || file.type === "image/gif") {
+        resolve(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+            const scale = MAX_IMAGE_DIMENSION / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const tryQuality = (quality) => {
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  resolve(file);
+                  return;
+                }
+                if (blob.size > TARGET_MAX_BYTES && quality > 0.35) {
+                  tryQuality(quality - 0.15);
+                  return;
+                }
+                const newName = file.name.replace(/\.(png|gif|webp|jpe?g)$/i, "") + ".jpg";
+                const compressed = new File([blob], newName, { type: "image/jpeg" });
+                resolve(compressed.size < file.size ? compressed : file);
+              },
+              "image/jpeg",
+              quality
+            );
+          };
+          tryQuality(0.75);
+        };
+        img.onerror = () => resolve(file);
+        img.src = event.target.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function compressFileInput(input) {
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+    const compressed = await Promise.all(files.map(compressImageFile));
+    const dataTransfer = new DataTransfer();
+    compressed.forEach((f) => dataTransfer.items.add(f));
+    input.files = dataTransfer.files;
+  }
+
+  document.querySelectorAll("[data-compress-images]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      input.disabled = true;
+      await compressFileInput(input);
+      input.disabled = false;
+    });
+  });
 })();
