@@ -96,13 +96,13 @@
   </p>
   {% if rapport.witness %}
   <p class="prose-label">Témoin(s)</p>
-  <div class="prose"><p>{{ rapport.witness }}</p></div>
+  <div class="prose prose--clear"><p>{{ rapport.witness }}</p></div>
   {% endif %}
   <p class="prose-label" style="margin-top: 1rem;">Description</p>
-  <div class="prose"><p>{{ rapport.description }}</p></div>
+  <div class="prose prose--clear"><p>{{ rapport.description }}</p></div>
   {% if rapport.proof %}
   <p class="prose-label" style="margin-top: 1rem;">Preuve(s) — Lien(s)</p>
-  <div class="prose rich-text">{{ rapport.proof | rich_text }}</div>
+  <div class="prose prose--clear rich-text">{{ rapport.proof | rich_text }}</div>
   {% endif %}
   {% if rapport.proof_attachments %}
   <p class="prose-label" style="margin-top: 1rem;">Preuve(s) — Fichier(s)</p>
@@ -147,7 +147,7 @@
         <span class="badge-type">{{ r.type_label }}</span>
         <span class="reponse-item__meta">{{ r.author_name }} — {{ r.author_rank }} · {{ r.sent_at_fr }}</span>
       </div>
-      <div class="prose rich-text">{{ r.content | rich_text }}</div>
+      <div class="prose prose--clear rich-text">{{ r.content | rich_text }}</div>
       {% if r.attachments %}
       <div class="reponse-attachments">
         {% for a in r.attachments %}
