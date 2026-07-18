@@ -36,6 +36,43 @@
 </div>
 {% endif %}
 
+{% if is_ceam_member %}
+<div class="card card--padded stepper-card" style="margin-bottom: 1rem;">
+  <div class="stepper-card__header">
+    <p class="prose-label" style="margin: 0;">Progression du dossier</p>
+    <p class="data-table__muted" style="margin: 0;">
+      Dernière mise à jour :
+      <strong>{{ rapport.status_history_affichage[-1].changed_at_fr if rapport.status_history_affichage else rapport.send_date_fr }}</strong>
+    </p>
+  </div>
+  <div class="stepper">
+    {% for value, label in status_steps %}
+    {% set step_state = "completed" if value < rapport.status else ("current" if value == rapport.status else "upcoming") %}
+    {% set step_entry = (rapport.status_history_affichage | selectattr("status_value", "equalto", value) | list) | last %}
+    <div class="stepper__step stepper__step--{{ step_state }}{{ ' stepper__step--danger' if value in branch_statuses else '' }}">
+      <div class="stepper__line"></div>
+      <div class="stepper__circle">
+        {% if step_state == "completed" %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+        {% elif value in branch_statuses %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        {% else %}
+        <span>{{ loop.index }}</span>
+        {% endif %}
+      </div>
+      <div class="stepper__label">
+        <p class="stepper__label-title">{{ label }}</p>
+        {% if step_entry %}
+        <p class="stepper__label-meta">{{ step_entry.author_name }}</p>
+        <p class="stepper__label-meta">{{ step_entry.changed_at_fr }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <div class="card-grid">
   <div class="info-card">
     <p class="info-card__label">Plaignant</p>
@@ -176,27 +213,6 @@
   <p class="empty-state__text" style="margin: 0;">Aucune réponse envoyée pour le moment.</p>
   {% endif %}
 </div>
-
-<!-- Historique des changements de statut : réservé à la commission -->
-{% if is_ceam_member %}
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label" style="margin-bottom: 1rem;">Historique des statuts</p>
-  {% if rapport.status_history_affichage %}
-  <div class="reponse-list">
-    {% for h in rapport.status_history_affichage | reverse %}
-    <div class="reponse-item">
-      <div class="reponse-item__header">
-        {{ status_badge(h.status_value, h.status_label) }}
-        <span class="reponse-item__meta">{{ h.author_name }} — {{ h.author_rank }} · {{ h.changed_at_fr }}</span>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="empty-state__text" style="margin: 0;">Aucun changement de statut enregistré.</p>
-  {% endif %}
-</div>
-{% endif %}
 
 {% if is_ceam_member %}
 <div class="modal-overlay" id="reponse-modal" aria-hidden="true">

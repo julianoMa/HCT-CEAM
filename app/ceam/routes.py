@@ -251,6 +251,13 @@ def detail(rapport_id):
                 flash("Réponse envoyée et ajoutée à l'historique du dossier.", "success")
             return redirect(url_for("ceam.detail", rapport_id=rapport.id))
 
+    branch_statuses = {Rapport.STATUS_TRAITEMENT_SUSPENDU, Rapport.STATUS_NON_RECEVABLE}
+    visited_status_values = {h["status_value"] for h in rapport.status_history_affichage}
+    status_steps = [
+        (value, label) for value, label in Rapport.STATUS_LABELS.items()
+        if value not in branch_statuses or value == rapport.status or value in visited_status_values
+    ]
+
     return render_template(
         "ceam/detail.html",
         rapport=rapport,
@@ -259,6 +266,8 @@ def detail(rapport_id):
         is_ceam_member=is_ceam_member,
         tiers_users=tiers_users,
         available_users=available_users,
+        status_steps=status_steps,
+        branch_statuses=branch_statuses,
     )
 
 

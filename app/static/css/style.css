@@ -1878,3 +1878,142 @@ body.sidebar-open {
   pointer-events: none;
   cursor: default;
 }
+
+/* ── Stepper de progression du dossier ── */
+
+.stepper-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.stepper-card__header strong {
+  color: var(--text);
+}
+
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 4px 4px 6px;
+}
+
+.stepper__step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 118px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stepper__line {
+  position: absolute;
+  top: 18px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.stepper__step:first-child .stepper__line {
+  display: none;
+}
+
+.stepper__step--completed .stepper__line {
+  background: var(--accent);
+}
+
+.stepper__circle {
+  position: relative;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.stepper__step--completed .stepper__circle {
+  background: var(--accent-gradient);
+  border-color: transparent;
+  color: var(--accent-contrast);
+}
+
+.stepper__step--current .stepper__circle {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Statuts spéciaux (Traitement suspendu / Non recevable) : toujours en
+   rouge quand ils apparaissent, qu'ils soient l'étape actuelle ou déjà
+   dépassés — ce sont des états d'alerte, pas une progression normale. */
+.stepper__step--danger .stepper__line {
+  background: var(--danger-border);
+}
+
+.stepper__step--danger .stepper__circle {
+  border-color: var(--danger-text);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.stepper__step--danger.stepper__step--current .stepper__circle {
+  box-shadow: 0 0 0 4px var(--danger-bg);
+}
+
+.stepper__step--danger.stepper__step--completed .stepper__circle {
+  background: var(--danger-text);
+  border-color: transparent;
+  color: #fff;
+}
+
+.stepper__step--danger .stepper__label-title {
+  color: var(--danger-text);
+}
+
+.stepper__label {
+  padding: 0 6px;
+}
+
+.stepper__label-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.stepper__step--completed .stepper__label-title,
+.stepper__step--current .stepper__label-title {
+  color: var(--text);
+}
+
+.stepper__label-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 3px 0 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .stepper__step {
+    min-width: 96px;
+  }
+}
