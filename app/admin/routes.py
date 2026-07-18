@@ -14,8 +14,30 @@ RESET_CONFIRMATION_PHRASE = "RÉINITIALISER"
 @login_required
 @requires_role(User.ROLE_ADMIN)
 def utilisateurs():
+    search_query = request.args.get("q", "")
+    limit = request.args.get("limit", type=int)
+    if limit not in (10, 25, 50, 100):
+        limit = 10
+    page = request.args.get("page", type=int) or 1
+
     users = User.list_all()
-    return render_template("admin/utilisateurs.html", users=users, role_labels=User.ROLE_LABELS)
+    users = User.filter_by_search(users, search_query)
+    total_count = len(users)
+    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    users = users[start:start + limit]
+
+    return render_template(
+        "admin/utilisateurs.html",
+        users=users,
+        role_labels=User.ROLE_LABELS,
+        search_query=search_query,
+        limit=limit,
+        total_count=total_count,
+        page=page,
+        total_pages=total_pages,
+    )
 
 
 @bp.route("/utilisateurs/<int:user_id>/role", methods=["POST"])

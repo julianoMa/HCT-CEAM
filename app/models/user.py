@@ -97,6 +97,20 @@ class User(UserMixin):
         docs = db.collection(COLLECTION).order_by("name").stream()
         return [cls._from_doc(d) for d in docs]
 
+    @staticmethod
+    def filter_by_search(users, query):
+        """Filtre une liste d'utilisateurs déjà chargée par nom ou Discord
+        ID (recherche insensible à la casse)."""
+        query = (query or "").strip().lower()
+        if not query:
+            return users
+
+        def matches(user):
+            haystack = f"{user.name} {user.discord_id}".lower()
+            return query in haystack
+
+        return [u for u in users if matches(u)]
+
     @classmethod
     def list_ceam_members(cls):
         """Tous les membres de la commission (Membre CEAM et au-dessus),

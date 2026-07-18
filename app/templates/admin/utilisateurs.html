@@ -1,8 +1,21 @@
-{% from "macros/ui.html" import page_header %}
+{% from "macros/ui.html" import page_header, empty_state, pagination %}
 
 {% extends "base.html" %}
 {% block content %}
 {% call page_header("Administration", "Utilisateurs", "Gère les rôles et permissions des membres.") %}{% endcall %}
+
+<form method="get" class="search-bar">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Rechercher par nom ou Discord ID…" class="search-input">
+  <select name="limit" onchange="this.form.submit()">
+    {% for n in [10, 25, 50, 100] %}
+    <option value="{{ n }}" {{ "selected" if limit == n }}>{{ n }} par page</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-secondary">Rechercher</button>
+  {% if search_query %}<a href="{{ url_for('admin.utilisateurs', limit=limit) }}" class="btn-ghost">Effacer</a>{% endif %}
+</form>
+
+<p class="data-table__muted" style="margin-bottom: 1rem;">{{ users|length }} résultat(s) affiché(s) sur {{ total_count }}.</p>
 
 <div class="card">
   <div class="table-wrap">
@@ -25,14 +38,23 @@
           <td>{{ u.role_label }}</td>
           <td>
             <form method="post" action="{{ url_for('admin.changer_role', user_id=u.id) }}" class="form-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="role">
                 {% for value, label in role_labels.items() %}
                 <option value="{{ value }}" {{ "selected" if u.role == value }}>{{ label }}</option>
                 {% endfor %}
               </select>
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn-secondary">Mettre à jour</button>
             </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4">
+            {{ empty_state(
+              "Aucun utilisateur trouvé",
+              "Essaie d'élargir ta recherche."
+            ) }}
           </td>
         </tr>
         {% endfor %}
@@ -40,4 +62,6 @@
     </table>
   </div>
 </div>
+
+{{ pagination("admin.utilisateurs", page, total_pages, q=search_query, limit=limit) }}
 {% endblock %}
