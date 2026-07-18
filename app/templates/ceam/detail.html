@@ -248,6 +248,27 @@
 {% endif %}
 
 {% if is_ceam_member %}
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <p class="prose-label" style="margin: 0 0 1rem;">Accès au dossier</p>
+  <div class="reponse-list">
+    {% if owner_user %}
+    <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span>{{ owner_user.name }} <span class="data-table__muted">(Déclarant)</span></span>
+    </div>
+    {% endif %}
+    {% for u in tiers_users %}
+    <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span>{{ u.name }} <span class="data-table__muted">(Tiers — {{ u.role_label }})</span></span>
+      <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-ghost btn-sm">Retirer</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="data-table__muted" style="margin: 1rem 0 0;">La commission CEAM (tous les membres) a également accès à ce dossier.</p>
+</div>
+
 <div class="modal-overlay" id="tiers-modal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tiers-modal-title">
     <h2 id="tiers-modal-title" class="modal__title">Ajouter un tiers</h2>

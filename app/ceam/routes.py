@@ -195,6 +195,7 @@ def detail(rapport_id):
     instruction_form = None
     reponse_form = None
     tiers_users = [u for u in (User.get(uid) for uid in rapport.tiers_ids) if u is not None]
+    owner_user = User.get(rapport.owner_id)
     available_users = None
     if is_ceam_member:
         excluded_ids = {rapport.owner_id, *rapport.tiers_ids}
@@ -278,6 +279,7 @@ def detail(rapport_id):
         reponse_form=reponse_form,
         is_ceam_member=is_ceam_member,
         tiers_users=tiers_users,
+        owner_user=owner_user,
         available_users=available_users,
         status_steps=status_steps,
         branch_statuses=branch_statuses,
