@@ -1925,10 +1925,6 @@ body.sidebar-open {
   display: none;
 }
 
-.stepper__step--completed .stepper__line {
-  background: var(--accent);
-}
-
 .stepper__circle {
   position: relative;
   z-index: 1;
@@ -1948,44 +1944,57 @@ body.sidebar-open {
   transition: all var(--transition);
 }
 
+/* Étapes atteintes (complétées ou en cours) : colorées selon le thème
+   global de la barre (doré par défaut, bleu/rouge/vert selon le statut
+   actuel du dossier — voir .stepper--theme-* ci-dessous). Le trait AVANT
+   l'étape en cours est coloré au même titre qu'une étape complétée, pour
+   que la progression "avance" visuellement jusqu'au statut sélectionné. */
+.stepper__step--completed .stepper__line,
+.stepper__step--current .stepper__line {
+  background: var(--stepper-color, var(--accent));
+}
+
 .stepper__step--completed .stepper__circle {
-  background: var(--accent-gradient);
+  background: var(--stepper-color, var(--accent));
   border-color: transparent;
-  color: var(--accent-contrast);
+  color: var(--stepper-contrast, #fff);
 }
 
 .stepper__step--current .stepper__circle {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--stepper-color, var(--accent));
+  color: var(--stepper-color, var(--accent));
   background: var(--surface);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+  box-shadow: 0 0 0 4px var(--stepper-soft, var(--accent-soft));
 }
 
-/* Statuts spéciaux (Traitement suspendu / Non recevable) : toujours en
-   rouge quand ils apparaissent, qu'ils soient l'étape actuelle ou déjà
-   dépassés — ce sont des états d'alerte, pas une progression normale. */
-.stepper__step--danger .stepper__line {
-  background: var(--danger-border);
+.stepper__step--completed .stepper__label-title,
+.stepper__step--current .stepper__label-title {
+  color: var(--text);
 }
 
-.stepper__step--danger .stepper__circle {
-  border-color: var(--danger-text);
-  color: var(--danger-text);
-  background: var(--danger-bg);
+/* Thèmes de la barre, selon le statut actuel du dossier. */
+.stepper--theme-gold {
+  --stepper-color: var(--accent);
+  --stepper-soft: var(--accent-soft);
+  --stepper-contrast: var(--accent-contrast);
 }
 
-.stepper__step--danger.stepper__step--current .stepper__circle {
-  box-shadow: 0 0 0 4px var(--danger-bg);
+.stepper--theme-blue {
+  --stepper-color: var(--info-text);
+  --stepper-soft: var(--info-bg);
+  --stepper-contrast: #fff;
 }
 
-.stepper__step--danger.stepper__step--completed .stepper__circle {
-  background: var(--danger-text);
-  border-color: transparent;
-  color: #fff;
+.stepper--theme-red {
+  --stepper-color: var(--danger-text);
+  --stepper-soft: var(--danger-bg);
+  --stepper-contrast: #fff;
 }
 
-.stepper__step--danger .stepper__label-title {
-  color: var(--danger-text);
+.stepper--theme-green {
+  --stepper-color: var(--success-text);
+  --stepper-soft: var(--success-bg);
+  --stepper-contrast: #fff;
 }
 
 .stepper__label {

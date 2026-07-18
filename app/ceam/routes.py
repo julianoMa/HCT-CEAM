@@ -258,6 +258,19 @@ def detail(rapport_id):
         if value not in branch_statuses or value == rapport.status or value in visited_status_values
     ]
 
+    # Thème de couleur unique pour toute la barre, selon le statut ACTUEL
+    # du dossier (pas historique par étape) : doré par défaut, bleu à la
+    # réception, rouge en cas de suspension/non-recevabilité, vert une
+    # fois clôturé.
+    if rapport.status == Rapport.STATUS_NOUVEAU:
+        stepper_theme = "blue"
+    elif rapport.status in branch_statuses:
+        stepper_theme = "red"
+    elif rapport.status == Rapport.STATUS_CLOTURE:
+        stepper_theme = "green"
+    else:
+        stepper_theme = "gold"
+
     return render_template(
         "ceam/detail.html",
         rapport=rapport,
@@ -268,6 +281,9 @@ def detail(rapport_id):
         available_users=available_users,
         status_steps=status_steps,
         branch_statuses=branch_statuses,
+        stepper_theme=stepper_theme,
+        status_nouveau=Rapport.STATUS_NOUVEAU,
+        status_cloture=Rapport.STATUS_CLOTURE,
     )
 
 
