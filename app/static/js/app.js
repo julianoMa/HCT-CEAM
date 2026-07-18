@@ -287,4 +287,27 @@
       });
     });
   }
+
+  // ── Protection anti double-clic sur les formulaires ──
+  // Désactive le(s) bouton(s) de soumission juste après le premier clic,
+  // pour éviter qu'un double-clic (ou un clic impatient pendant le
+  // chargement) n'envoie deux fois le même formulaire — dépôt de rapport,
+  // réponse, suivi interne, ajout de tiers, etc. Un formulaire peut passer
+  // outre avec l'attribut data-allow-resubmit si jamais nécessaire.
+  document.querySelectorAll('form[method="post" i]').forEach((form) => {
+    if (form.hasAttribute("data-allow-resubmit")) return;
+    form.addEventListener("submit", () => {
+      if (form.dataset.submitted === "true") return;
+      form.dataset.submitted = "true";
+      const submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+      submitButtons.forEach((btn) => {
+        // Laisser le clic initial partir avant de désactiver, sinon
+        // certains navigateurs annulent la valeur du bouton cliqué.
+        setTimeout(() => {
+          btn.disabled = true;
+          btn.classList.add("is-submitting");
+        }, 0);
+      });
+    });
+  });
 })();

@@ -2171,3 +2171,13 @@ html {
     display: block;
   }
 }
+
+/* ── Anti double-clic : feedback visuel pendant l'envoi ── */
+
+button.is-submitting,
+.btn-primary.is-submitting,
+.btn-secondary.is-submitting,
+.btn-danger.is-submitting {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
