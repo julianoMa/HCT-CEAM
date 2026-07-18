@@ -74,7 +74,7 @@ class Notification:
             return None
 
     @classmethod
-    def list_for_user(cls, user_id, limit=50):
+    def list_for_user(cls, user_id, limit=200):
         db = get_db()
         docs = (
             db.collection(COLLECTION)

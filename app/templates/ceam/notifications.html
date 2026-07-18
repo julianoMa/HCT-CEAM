@@ -11,6 +11,15 @@
   {% endif %}
 {% endcall %}
 
+<form method="get" class="search-bar" style="justify-content: flex-end;">
+  <span class="data-table__muted" style="margin-right: auto;">{{ notifications|length }} affichée(s) sur {{ total_count }}</span>
+  <select name="limit" onchange="this.form.submit()">
+    {% for n in [10, 25, 50, 100] %}
+    <option value="{{ n }}" {{ "selected" if limit == n }}>{{ n }} par page</option>
+    {% endfor %}
+  </select>
+</form>
+
 <div class="card">
   {% if notifications %}
   {% for n in notifications %}

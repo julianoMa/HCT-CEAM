@@ -88,7 +88,7 @@ class AuditLog:
             return None
 
     @classmethod
-    def list_recent(cls, limit=300):
+    def list_recent(cls, limit=500):
         db = get_db()
         docs = (
             db.collection(COLLECTION)
@@ -97,3 +97,17 @@ class AuditLog:
             .stream()
         )
         return [cls._from_doc(d) for d in docs]
+
+    @staticmethod
+    def filter_by_search(entries, query):
+        """Filtre une liste d'entrées déjà chargée par nom d'auteur ou
+        contenu des détails (recherche insensible à la casse)."""
+        query = (query or "").strip().lower()
+        if not query:
+            return entries
+
+        def matches(entry):
+            haystack = f"{entry.actor_name} {entry.details}".lower()
+            return query in haystack
+
+        return [e for e in entries if matches(e)]

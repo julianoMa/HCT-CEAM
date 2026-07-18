@@ -62,14 +62,23 @@ def mes_dossiers():
 def suivi():
     status_filter = request.args.get("status", type=int)
     search_query = request.args.get("q", "")
+    limit = request.args.get("limit", type=int)
+    if limit not in (10, 25, 50, 100):
+        limit = 25
+
     rapports = Rapport.query_open(status_filter=status_filter)
     rapports = Rapport.filter_by_search(rapports, search_query)
+    total_count = len(rapports)
+    rapports = rapports[:limit]
+
     return render_template(
         "ceam/suivi.html",
         rapports=rapports,
         status_labels=Rapport.STATUS_LABELS,
         status_filter=status_filter,
         search_query=search_query,
+        limit=limit,
+        total_count=total_count,
     )
 
 
@@ -279,9 +288,22 @@ def piece_jointe(rapport_id, attachment_id):
 @bp.route("/notifications")
 @login_required
 def notifications():
+    limit = request.args.get("limit", type=int)
+    if limit not in (10, 25, 50, 100):
+        limit = 25
+
     items = Notification.list_for_user(current_user.id)
     unread_count = sum(1 for n in items if not n.read)
-    return render_template("ceam/notifications.html", notifications=items, unread_count=unread_count)
+    total_count = len(items)
+    items = items[:limit]
+
+    return render_template(
+        "ceam/notifications.html",
+        notifications=items,
+        unread_count=unread_count,
+        limit=limit,
+        total_count=total_count,
+    )
 
 
 @bp.route("/notifications/<int:notification_id>/lire", methods=["POST"])

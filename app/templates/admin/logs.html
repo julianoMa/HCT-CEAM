@@ -4,6 +4,25 @@
 {% block content %}
 {% call page_header("Administration", "Journal d'activité", "Historique des actions sensibles effectuées sur la plateforme (rôles, rapports, statuts, réponses).") %}{% endcall %}
 
+<form method="get" class="search-bar">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Rechercher par auteur ou par détails…" class="search-input">
+  <select name="action" onchange="this.form.submit()">
+    <option value="">Toutes les actions</option>
+    {% for value, label in action_labels.items() %}
+    <option value="{{ value }}" {{ "selected" if action_filter == value }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="limit" onchange="this.form.submit()">
+    {% for n in [10, 25, 50, 100] %}
+    <option value="{{ n }}" {{ "selected" if limit == n }}>{{ n }} par page</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-secondary">Rechercher</button>
+  {% if search_query or action_filter %}<a href="{{ url_for('admin.logs', limit=limit) }}" class="btn-ghost">Effacer</a>{% endif %}
+</form>
+
+<p class="data-table__muted" style="margin: -0.5rem 0 1rem;">{{ entries|length }} résultat(s) affiché(s) sur {{ total_count }}.</p>
+
 <div class="card">
   <div class="table-wrap">
     <table class="data-table">
@@ -25,8 +44,8 @@
         <tr>
           <td colspan="3">
             {{ empty_state(
-              "Aucune activité enregistrée",
-              "Les actions sensibles (changements de rôle, dépôts, statuts, réponses...) apparaîtront ici au fil de l'eau."
+              "Aucune activité trouvée",
+              "Essaie d'élargir ta recherche, ou vérifie le filtre par type d'action."
             ) }}
           </td>
         </tr>

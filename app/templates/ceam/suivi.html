@@ -7,16 +7,23 @@
 <form method="get" class="search-bar">
   {% if status_filter is not none %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
   <input type="search" name="q" value="{{ search_query }}" placeholder="Rechercher par référence ou par nom…" class="search-input">
+  <select name="limit" onchange="this.form.submit()">
+    {% for n in [10, 25, 50, 100] %}
+    <option value="{{ n }}" {{ "selected" if limit == n }}>{{ n }} par page</option>
+    {% endfor %}
+  </select>
   <button type="submit" class="btn-secondary">Rechercher</button>
-  {% if search_query %}<a href="{{ url_for('ceam.suivi', status=status_filter) }}" class="btn-ghost">Effacer</a>{% endif %}
+  {% if search_query %}<a href="{{ url_for('ceam.suivi', status=status_filter, limit=limit) }}" class="btn-ghost">Effacer</a>{% endif %}
 </form>
 
 <div class="filter-bar">
-  <a class="filter-chip {{ 'is-active' if status_filter is none }}" href="{{ url_for('ceam.suivi', q=(search_query or none)) }}">Tous</a>
+  <a class="filter-chip {{ 'is-active' if status_filter is none }}" href="{{ url_for('ceam.suivi', q=(search_query or none), limit=limit) }}">Tous</a>
   {% for value, label in status_labels.items() %}
-  <a class="filter-chip {{ 'is-active' if status_filter == value }}" href="{{ url_for('ceam.suivi', status=value, q=(search_query or none)) }}">{{ label }}</a>
+  <a class="filter-chip {{ 'is-active' if status_filter == value }}" href="{{ url_for('ceam.suivi', status=value, q=(search_query or none), limit=limit) }}">{{ label }}</a>
   {% endfor %}
 </div>
+
+<p class="data-table__muted" style="margin-bottom: 1rem;">{{ rapports|length }} résultat(s) affiché(s) sur {{ total_count }}.</p>
 
 <div class="card">
   {% set list_context = "suivi" %}

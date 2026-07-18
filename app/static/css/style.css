@@ -807,6 +807,12 @@ a:hover { color: var(--accent-hover); }
   margin-bottom: 1.25rem;
 }
 
+.search-bar select {
+  width: auto;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
 .search-input {
   flex: 1;
   min-width: 220px;
