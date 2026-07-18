@@ -10,6 +10,17 @@
 {% call page_header(rapport.reference, rapport.plaignant_first_name ~ " " ~ rapport.plaignant_last_name ~ " c/ " ~ rapport.concerne_first_name ~ " " ~ rapport.concerne_last_name) %}
   <div style="display: flex; align-items: center; gap: 10px;">
     {{ status_badge(rapport.status, rapport.status_label) }}
+    {% if is_ceam_member %}
+    <button type="button" class="btn-secondary btn-sm" data-open-modal="tiers-modal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M19 8v6M22 11h-6"/>
+      </svg>
+      Ajouter un tiers
+    </button>
+    {% endif %}
+    
     <a href="{{ url_for('ceam.export_pdf', rapport_id=rapport.id) }}" class="btn-secondary btn-sm">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
       Exporter en PDF
@@ -203,31 +214,6 @@
 {% endif %}
 
 {% if is_ceam_member %}
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-    <p class="prose-label" style="margin: 0;">Accès au dossier</p>
-    <button type="button" class="btn-secondary btn-sm" data-open-modal="tiers-modal">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
-      Ajouter un tiers
-    </button>
-  </div>
-  {% if tiers_users %}
-  <div class="reponse-list">
-    {% for u in tiers_users %}
-    <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-      <span>{{ u.name }} <span class="data-table__muted">({{ u.role_label }})</span></span>
-      <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-ghost btn-sm">Retirer</button>
-      </form>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="empty-state__text" style="margin: 0;">Seuls le déclarant et la commission ont accès à ce dossier pour le moment.</p>
-  {% endif %}
-</div>
-
 <div class="modal-overlay" id="tiers-modal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tiers-modal-title">
     <h2 id="tiers-modal-title" class="modal__title">Ajouter un tiers</h2>
