@@ -9,6 +9,7 @@ from datetime import datetime
 
 from app.extensions import get_db
 from app.firestore_utils import next_id
+from app.timezone_utils import format_utc
 
 COLLECTION = "logs"
 
@@ -50,10 +51,7 @@ class AuditLog:
 
     @property
     def created_at_fr(self):
-        try:
-            return datetime.fromisoformat(self.created_at).strftime("%d/%m/%Y à %H:%M")
-        except (ValueError, TypeError):
-            return self.created_at
+        return format_utc(self.created_at)
 
     def to_dict(self):
         return {

@@ -4,6 +4,7 @@ from google.cloud.firestore_v1 import FieldFilter
 
 from app.extensions import get_db
 from app.firestore_utils import next_id
+from app.timezone_utils import format_utc
 
 COLLECTION = "ceam"
 
@@ -113,10 +114,7 @@ class Rapport:
 
     @property
     def send_date_fr(self):
-        try:
-            return datetime.fromisoformat(self.send_date).strftime("%d/%m/%Y %H:%M")
-        except (ValueError, TypeError):
-            return self.send_date
+        return format_utc(self.send_date, "%d/%m/%Y %H:%M")
 
     @property
     def reponses_affichage(self):
@@ -125,10 +123,7 @@ class Rapport:
         affichage = []
         for r in self.reponses:
             sent_at = r.get("sent_at", "")
-            try:
-                sent_at_fr = datetime.fromisoformat(sent_at).strftime("%d/%m/%Y à %H:%M")
-            except (ValueError, TypeError):
-                sent_at_fr = sent_at
+            sent_at_fr = format_utc(sent_at)
             affichage.append({
                 "type_label": r.get("type") or "Réponse",
                 "content": r.get("content", ""),
@@ -145,10 +140,7 @@ class Rapport:
         affichage = []
         for h in self.status_history:
             changed_at = h.get("changed_at", "")
-            try:
-                changed_at_fr = datetime.fromisoformat(changed_at).strftime("%d/%m/%Y à %H:%M")
-            except (ValueError, TypeError):
-                changed_at_fr = changed_at
+            changed_at_fr = format_utc(changed_at)
             affichage.append({
                 "status_value": h.get("status"),
                 "status_label": self.STATUS_LABELS.get(h.get("status"), "Inconnu"),

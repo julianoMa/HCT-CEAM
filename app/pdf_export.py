@@ -8,7 +8,9 @@ Utilise fpdf2 (pur Python, sans dépendance système), plus adapté qu'une
 librairie type WeasyPrint sur un hébergement serverless comme Vercel.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
+
+from app.timezone_utils import APP_TIMEZONE
 
 from fpdf import FPDF
 
@@ -136,7 +138,8 @@ def generate_dossier_pdf(rapport):
     pdf.set_text_color(*MUTED_RGB)
     pdf.multi_cell(
         0, 6,
-        f"Document généré le {datetime.utcnow().strftime('%d/%m/%Y à %H:%M')} UTC "
+        f"Document généré le "
+        f"{datetime.now(timezone.utc).astimezone(APP_TIMEZONE).strftime('%d/%m/%Y à %H:%M')} "
         "depuis la plateforme CEAM.",
         new_x="LMARGIN", new_y="NEXT",
     )
