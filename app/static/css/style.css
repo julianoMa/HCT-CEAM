@@ -2017,3 +2017,23 @@ body.sidebar-open {
     min-width: 96px;
   }
 }
+
+/* ── Séparateur "zone privée CEAM" ── */
+
+.internal-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 1.5rem 0 1rem;
+  padding: 10px 14px;
+  background: var(--accent-soft);
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.internal-section-divider svg {
+  flex-shrink: 0;
+}

@@ -133,38 +133,6 @@
   {% endif %}
 </div>
 
-<!-- Suivi interne CEAM : statut + note, réservé à la commission -->
-{% if is_ceam_member %}
-<form method="post" class="form-card" style="margin-bottom: 1rem;">
-  {{ instruction_form.hidden_tag() }}
-  <input type="hidden" name="action" value="instruction">
-  <div class="form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </span>
-      Suivi interne CEAM
-    </h2>
-    <div class="form-grid form-grid--single">
-      <div class="form-group">{{ instruction_form.status.label }}{{ instruction_form.status() }}</div>
-      <div class="form-group">{{ instruction_form.note.label }}{{ instruction_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
-    </div>
-  </div>
-  <div class="form-actions">
-    <button type="submit">Enregistrer le suivi interne</button>
-    <button type="button" class="btn-secondary" data-open-modal="reponse-modal">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-      Envoyer une réponse
-    </button>
-  </div>
-</form>
-{% else %}
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label">Statut du dossier</p>
-  <p style="margin: 0;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
-</div>
-{% endif %}
-
 <!-- Réponses officielles à la commission : historique + envoi (séparé du suivi interne) -->
 <div class="card card--padded" style="margin-bottom: 1rem;">
   <p class="prose-label" style="margin-bottom: 1rem;">Réponses officielles de la commission</p>
@@ -213,6 +181,42 @@
   <p class="empty-state__text" style="margin: 0;">Aucune réponse envoyée pour le moment.</p>
   {% endif %}
 </div>
+
+<!-- Suivi interne CEAM : statut + note, réservé à la commission -->
+{% if is_ceam_member %}
+<div class="internal-section-divider">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16" stroke-width="2.5"/></svg>
+  <span>Ce qui suit n'est visible que par la commission CEAM — le déclarant ne voit ni cette section, ni les notes internes.</span>
+</div>
+<form method="post" class="form-card" style="margin-bottom: 1rem;">
+  {{ instruction_form.hidden_tag() }}
+  <input type="hidden" name="action" value="instruction">
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </span>
+      Suivi interne CEAM
+    </h2>
+    <div class="form-grid form-grid--single">
+      <div class="form-group">{{ instruction_form.status.label }}{{ instruction_form.status() }}</div>
+      <div class="form-group">{{ instruction_form.note.label }}{{ instruction_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit">Enregistrer le suivi interne</button>
+    <button type="button" class="btn-secondary" data-open-modal="reponse-modal">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      Envoyer une réponse
+    </button>
+  </div>
+</form>
+{% else %}
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <p class="prose-label">Statut du dossier</p>
+  <p style="margin: 0;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
+</div>
+{% endif %}
 
 {% if is_ceam_member %}
 <div class="modal-overlay" id="reponse-modal" aria-hidden="true">
