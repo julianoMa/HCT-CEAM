@@ -56,4 +56,69 @@
 </div>
 
 {{ pagination("admin.logs", page, total_pages, q=search_query, action=action_filter, limit=limit) }}
+
+<div class="card card--padded" style="margin-top: 1.5rem; border-color: var(--danger-border); background: var(--danger-bg);">
+  <p class="prose-label" style="color: var(--danger-text); margin-bottom: 0.5rem;">Zone dangereuse</p>
+  <p class="prose" style="margin-bottom: 1rem;">
+    Réinitialise complètement la base de données : tous les dossiers, comptes utilisateurs,
+    notifications, pièces jointes et ce journal d'activité seront supprimés définitivement.
+    Les identifiants (références de dossiers, etc.) repartiront de zéro. Le règlement CEAM
+    est conservé.
+  </p>
+  <button type="button" class="btn-danger" data-open-modal="reset-confirm-1">
+    Réinitialiser la base de données
+  </button>
+</div>
+
+<div class="modal-overlay" id="reset-confirm-1" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-1-title">
+    <h2 id="reset-confirm-1-title" class="modal__title">Réinitialiser la base de données ?</h2>
+    <p class="prose" style="margin-bottom: 1.25rem;">
+      Cette action est <strong>irréversible</strong>. Tous les dossiers, comptes, notifications
+      et pièces jointes seront supprimés définitivement, et les compteurs d'identifiants
+      repartiront à zéro.
+    </p>
+    <div class="modal__actions">
+      <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+      <button type="button" class="btn-danger" data-close-modal data-open-modal="reset-confirm-2">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-confirm-2" aria-hidden="true">
+  <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-2-title">
+    <h2 id="reset-confirm-2-title" class="modal__title">Confirmation finale</h2>
+    <p class="prose" style="margin-bottom: 0.75rem;">Seront supprimés définitivement :</p>
+    <ul class="ceam-list" style="margin-bottom: 1rem;">
+      <li>Tous les dossiers CEAM et leurs pièces jointes</li>
+      <li>Tous les comptes utilisateurs (tout le monde devra se reconnecter)</li>
+      <li>Toutes les notifications</li>
+      <li>Le journal d'activité (y compris cette action elle-même, qui ne sera donc pas tracée)</li>
+    </ul>
+    <p class="prose" style="margin-bottom: 1.25rem;"><strong>Conservé :</strong> le règlement CEAM.</p>
+    <form method="post" action="{{ url_for('admin.reset_database_confirm') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label>Tape <strong>RÉINITIALISER</strong> pour confirmer</label>
+        <input type="text" name="confirmation_phrase" id="reset-confirmation-input" autocomplete="off">
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit" class="btn-danger" id="reset-confirm-submit" disabled>Réinitialiser définitivement</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById("reset-confirmation-input");
+    var submitBtn = document.getElementById("reset-confirm-submit");
+    if (input && submitBtn) {
+      input.addEventListener("input", function () {
+        submitBtn.disabled = input.value.trim() !== "RÉINITIALISER";
+      });
+    }
+  })();
+</script>
 {% endblock %}

@@ -1,11 +1,13 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
+from flask_login import current_user, login_required, logout_user
 
 from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.permissions import requires_role
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+RESET_CONFIRMATION_PHRASE = "RÉINITIALISER"
 
 
 @bp.route("/utilisateurs")
@@ -77,3 +79,36 @@ def logs():
         page=page,
         total_pages=total_pages,
     )
+
+
+@bp.route("/reset-database", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_ADMIN)
+def reset_database_confirm():
+    """Réinitialisation complète de la base (voir app/database_reset.py).
+    Double confirmation déjà faite côté interface (deux modals) ; ici, on
+    exige en plus une phrase de confirmation exacte comme dernier
+    garde-fou avant une action irréversible."""
+    confirmation_phrase = request.form.get("confirmation_phrase", "").strip()
+    if confirmation_phrase != RESET_CONFIRMATION_PHRASE:
+        flash(
+            "Phrase de confirmation incorrecte : la base de données n'a pas été modifiée.",
+            "danger",
+        )
+        return redirect(url_for("admin.logs"))
+
+    from app.database_reset import reset_database  # import différé : évite un cycle d'import
+    summary = reset_database()
+
+    # Le compte de la personne qui vient d'effectuer l'action a lui-même
+    # été supprimé (la collection utilisateurs est entièrement vidée) :
+    # sa session ne correspond plus à rien, il faut la terminer proprement.
+    logout_user()
+
+    details = ", ".join(f"{count} {name}" for name, count in summary.items())
+    flash(
+        f"Base de données réinitialisée ({details}). Tous les comptes ont été "
+        "supprimés — reconnecte-toi via Discord.",
+        "success",
+    )
+    return redirect(url_for("auth.login"))
