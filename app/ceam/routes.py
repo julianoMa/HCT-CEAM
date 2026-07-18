@@ -254,9 +254,17 @@ def detail(rapport_id):
 
     branch_statuses = {Rapport.STATUS_TRAITEMENT_SUSPENDU, Rapport.STATUS_NON_RECEVABLE}
     visited_status_values = {h["status_value"] for h in rapport.status_history_affichage}
+    # "Non recevable" est lui-même une décision finale : afficher "Décision
+    # rendue" (Clôturé) comme prochaine étape n'aurait pas de sens tant
+    # qu'elle n'a pas réellement été atteinte.
+    hide_cloture = (
+        rapport.status == Rapport.STATUS_NON_RECEVABLE
+        and Rapport.STATUS_CLOTURE not in visited_status_values
+    )
     status_steps = [
         (value, label) for value, label in Rapport.STATUS_LABELS.items()
         if value not in branch_statuses or value == rapport.status or value in visited_status_values
+        if not (value == Rapport.STATUS_CLOTURE and hide_cloture)
     ]
 
     # Thème de couleur unique pour toute la barre, selon le statut ACTUEL
