@@ -441,15 +441,25 @@ a:hover { color: var(--accent-hover); }
   width: 56px;
   height: 56px;
   margin: 0 auto 1.25rem;
-  border-radius: 16px;
-  background: var(--accent-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-contrast);
-  font-weight: 700;
-  font-size: 18px;
-  box-shadow: 0 8px 24px rgba(244, 182, 93, 0.4);
+}
+
+.auth-card__logo-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card__logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .auth-card h1 {

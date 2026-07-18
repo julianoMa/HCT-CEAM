@@ -139,7 +139,11 @@
   <div class="auth-layout">
     {% block auth_content %}
     <div class="auth-card">
-      <div class="auth-card__logo">CE</div>
+      <div class="auth-card__logo">
+        <span class="auth-card__logo-wrap">
+          <img src="https://www.zupimages.net/up/22/30/as83.png" alt="CEAM" class="auth-card__logo-img">
+        </span>
+      </div>
       <h1>CEAM</h1>
       <p>Commission d'éthique des affaires médicales — connecte-toi avec Discord pour accéder à la plateforme.</p>
       <a href="{{ url_for('auth.login') }}" class="btn-discord">
