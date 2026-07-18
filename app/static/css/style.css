@@ -1347,7 +1347,7 @@ button svg, .btn svg, .btn-primary svg, .btn-secondary svg, .btn-danger svg, .bt
 .prose {
   font-size: 14px;
   line-height: 1.7;
-  color: var(--text-secondary);
+  color: var(--text);
 }
 
 .prose p {
