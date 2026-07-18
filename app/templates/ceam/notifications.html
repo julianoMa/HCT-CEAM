@@ -1,4 +1,4 @@
-{% from "macros/ui.html" import page_header, empty_state %}
+{% from "macros/ui.html" import page_header, empty_state, pagination %}
 
 {% extends "base.html" %}
 {% block content %}
@@ -57,4 +57,6 @@
   ) }}
   {% endif %}
 </div>
+
+{{ pagination("ceam.notifications", page, total_pages, limit=limit) }}
 {% endblock %}

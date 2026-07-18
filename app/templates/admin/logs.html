@@ -1,4 +1,4 @@
-{% from "macros/ui.html" import page_header, empty_state %}
+{% from "macros/ui.html" import page_header, empty_state, pagination %}
 
 {% extends "base.html" %}
 {% block content %}
@@ -54,4 +54,6 @@
     </table>
   </div>
 </div>
+
+{{ pagination("admin.logs", page, total_pages, q=search_query, action=action_filter, limit=limit) }}
 {% endblock %}

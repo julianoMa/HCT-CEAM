@@ -1,4 +1,4 @@
-{% from "macros/ui.html" import page_header %}
+{% from "macros/ui.html" import page_header, pagination %}
 
 {% extends "base.html" %}
 {% block content %}
@@ -29,4 +29,6 @@
   {% set list_context = "suivi" %}
   {% include "ceam/_liste_dossiers.html" %}
 </div>
+
+{{ pagination("ceam.suivi", page, total_pages, status=status_filter, q=search_query, limit=limit) }}
 {% endblock %}

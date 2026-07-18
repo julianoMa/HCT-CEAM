@@ -94,11 +94,15 @@ def suivi():
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
         limit = 25
+    page = request.args.get("page", type=int) or 1
 
     rapports = Rapport.query_open(status_filter=status_filter)
     rapports = Rapport.filter_by_search(rapports, search_query)
     total_count = len(rapports)
-    rapports = rapports[:limit]
+    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    rapports = rapports[start:start + limit]
 
     return render_template(
         "ceam/suivi.html",
@@ -108,6 +112,8 @@ def suivi():
         search_query=search_query,
         limit=limit,
         total_count=total_count,
+        page=page,
+        total_pages=total_pages,
     )
 
 
@@ -329,11 +335,15 @@ def notifications():
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
         limit = 25
+    page = request.args.get("page", type=int) or 1
 
     items = Notification.list_for_user(current_user.id)
     unread_count = sum(1 for n in items if not n.read)
     total_count = len(items)
-    items = items[:limit]
+    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    items = items[start:start + limit]
 
     return render_template(
         "ceam/notifications.html",
@@ -341,6 +351,8 @@ def notifications():
         unread_count=unread_count,
         limit=limit,
         total_count=total_count,
+        page=page,
+        total_pages=total_pages,
     )
 
 

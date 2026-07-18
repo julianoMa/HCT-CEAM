@@ -53,6 +53,7 @@ def logs():
     limit = request.args.get("limit", type=int)
     if limit not in (10, 25, 50, 100):
         limit = 25
+    page = request.args.get("page", type=int) or 1
 
     entries = AuditLog.list_recent()
     entries = AuditLog.filter_by_search(entries, search_query)
@@ -60,7 +61,10 @@ def logs():
         entries = [e for e in entries if e.action == action_filter]
 
     total_count = len(entries)
-    entries = entries[:limit]
+    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    entries = entries[start:start + limit]
 
     return render_template(
         "admin/logs.html",
@@ -70,4 +74,6 @@ def logs():
         action_labels=AuditLog.ACTION_LABELS,
         limit=limit,
         total_count=total_count,
+        page=page,
+        total_pages=total_pages,
     )
