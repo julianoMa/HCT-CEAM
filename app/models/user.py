@@ -21,7 +21,7 @@ class User(UserMixin):
         ROLE_ADMIN: "Administrateur",
     }
 
-    def __init__(self, id, discord_id, name, role, avatar_url=None, affectation=None, rank=None):
+    def __init__(self, id, discord_id, name, role, avatar_url=None, affectation=None, rank=None, session_version=0):
         self.id = id
         self.discord_id = discord_id
         self.name = name
@@ -33,10 +33,15 @@ class User(UserMixin):
         # connu.
         self.affectation = affectation
         self.rank = rank
+        # Incrémenté pour forcer la déconnexion à distance de cette
+        # personne (voir force_logout ci-dessous) : la session en cours
+        # dans son navigateur devient invalide dès sa prochaine requête,
+        # sans qu'on puisse toucher directement à son cookie.
+        self.session_version = session_version or 0
 
     # --- Flask-Login ---
     def get_id(self):
-        return str(self.id)
+        return f"{self.id}|{self.session_version}"
 
     # --- Confort ---
     @property
@@ -51,6 +56,7 @@ class User(UserMixin):
             "avatar_url": self.avatar_url,
             "affectation": self.affectation,
             "rank": self.rank,
+            "session_version": self.session_version,
         }
 
     @classmethod
@@ -64,6 +70,7 @@ class User(UserMixin):
             avatar_url=data.get("avatar_url"),
             affectation=data.get("affectation"),
             rank=data.get("rank"),
+            session_version=data.get("session_version", 0),
         )
 
     # --- Accès Firestore ---
@@ -72,6 +79,33 @@ class User(UserMixin):
         db = get_db()
         doc = db.collection(COLLECTION).document(str(user_id)).get()
         return cls._from_doc(doc) if doc.exists else None
+
+    @classmethod
+    def get_for_session(cls, composite_id):
+        """Charge un utilisateur à partir de l'identifiant composite stocké
+        dans le cookie de session ('id|session_version'), et vérifie que la
+        version de session correspond toujours à celle en base. Retourne
+        None si la personne n'existe plus OU si sa session a été invalidée
+        entre-temps (déconnexion forcée) — ce qui la déconnecte proprement
+        au prochain chargement de page."""
+        try:
+            raw_id, raw_version = str(composite_id).split("|", 1)
+            user_id, session_version = int(raw_id), int(raw_version)
+        except (ValueError, AttributeError):
+            return None
+        user = cls.get(user_id)
+        if user is None or user.session_version != session_version:
+            return None
+        return user
+
+    def force_logout(self):
+        """Invalide immédiatement la session actuelle de cette personne :
+        elle sera déconnectée dès sa prochaine requête, sans avoir à
+        toucher à son cookie (impossible à distance de toute façon)."""
+        db = get_db()
+        new_version = self.session_version + 1
+        db.collection(COLLECTION).document(str(self.id)).update({"session_version": new_version})
+        self.session_version = new_version
 
     @classmethod
     def get_by_discord_id(cls, discord_id):

@@ -24,6 +24,7 @@ class AuditLog:
     ACTION_REGLEMENT_UPDATE = "reglement_update"
     ACTION_TIERS_ADD = "tiers_add"
     ACTION_TIERS_REMOVE = "tiers_remove"
+    ACTION_FORCE_LOGOUT = "force_logout"
 
     ACTION_LABELS = {
         ACTION_ROLE_CHANGE: "Changement de rôle",
@@ -35,6 +36,7 @@ class AuditLog:
         ACTION_REGLEMENT_UPDATE: "Modification du règlement",
         ACTION_TIERS_ADD: "Ajout d'un tiers",
         ACTION_TIERS_REMOVE: "Retrait d'un tiers",
+        ACTION_FORCE_LOGOUT: "Déconnexion forcée",
     }
 
     def __init__(self, id, action, actor_name, actor_id, details, created_at):

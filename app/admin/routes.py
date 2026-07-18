@@ -49,6 +49,8 @@ def changer_role(user_id):
 
     if user is None:
         flash("Utilisateur introuvable.", "danger")
+    elif user.id == current_user.id:
+        flash("Tu ne peux pas modifier ton propre rôle.", "danger")
     elif nouveau_role not in User.ROLE_LABELS:
         flash("Rôle invalide.", "danger")
     else:
@@ -134,3 +136,29 @@ def reset_database_confirm():
         "success",
     )
     return redirect(url_for("auth.login"))
+
+
+@bp.route("/utilisateurs/<int:user_id>/deconnecter", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_ADMIN)
+def deconnecter_utilisateur(user_id):
+    """Force la déconnexion d'un utilisateur : sa session actuelle devient
+    invalide dès sa prochaine requête (voir User.force_logout)."""
+    user = User.get(user_id)
+    if user is None:
+        flash("Utilisateur introuvable.", "danger")
+        return redirect(url_for("admin.utilisateurs"))
+
+    if user.id == current_user.id:
+        flash("Tu ne peux pas te déconnecter toi-même depuis cette page.", "danger")
+        return redirect(url_for("admin.utilisateurs"))
+
+    user.force_logout()
+    AuditLog.record(
+        action=AuditLog.ACTION_FORCE_LOGOUT,
+        actor_name=current_user.name,
+        actor_id=current_user.id,
+        details=f"{current_user.name} a déconnecté {user.name} à distance",
+    )
+    flash(f"{user.name} a été déconnecté(e). Sa session actuelle est invalidée.", "success")
+    return redirect(url_for("admin.utilisateurs"))

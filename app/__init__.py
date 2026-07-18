@@ -25,7 +25,7 @@ def create_app(config_class=Config):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.get(user_id)
+        return User.get_for_session(user_id)
 
     from app.auth.routes import bp as auth_bp
     from app.ceam.routes import bp as ceam_bp

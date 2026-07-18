@@ -26,6 +26,7 @@
           <th>Discord ID</th>
           <th>Rôle actuel</th>
           <th>Modifier</th>
+          <th>Session</th>
         </tr>
       </thead>
       <tbody>
@@ -33,10 +34,14 @@
         <tr>
           <td>
             <strong>{{ u.name }}</strong>
+            {% if u.id == current_user.id %}<span class="data-table__muted">(toi)</span>{% endif %}
           </td>
           <td><code class="data-table__muted">{{ u.discord_id }}</code></td>
           <td>{{ u.role_label }}</td>
           <td>
+            {% if u.id == current_user.id %}
+            <span class="data-table__muted">Tu ne peux pas modifier ton propre rôle.</span>
+            {% else %}
             <form method="post" action="{{ url_for('admin.changer_role', user_id=u.id) }}" class="form-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="role">
@@ -46,11 +51,20 @@
               </select>
               <button type="submit" class="btn-secondary">Mettre à jour</button>
             </form>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.id != current_user.id %}
+            <form method="post" action="{{ url_for('admin.deconnecter_utilisateur', user_id=u.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-ghost btn-sm">Déconnecter</button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="4">
+          <td colspan="5">
             {{ empty_state(
               "Aucun utilisateur trouvé",
               "Essaie d'élargir ta recherche."
