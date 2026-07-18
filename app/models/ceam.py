@@ -56,8 +56,9 @@ class Rapport:
 
     def __init__(self, id, plaignant_last_name, plaignant_first_name, plaignant_affectation, plaignant_rank,
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
-                 event_date, event_hour, witness, description, proof,
-                 send_date, owner_id, status, note, reponses=None, archived=False, status_history=None):
+                 event_date, event_hour, location, witness, description, proof,
+                 send_date, owner_id, status, note, reponses=None, archived=False, status_history=None,
+                 proof_attachments=None):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -69,9 +70,11 @@ class Rapport:
         self.concerne_rank = concerne_rank
         self.event_date = event_date        # string "YYYY-MM-DD" (conforme au schéma : string)
         self.event_hour = event_hour        # string "HH:MM" (conforme au schéma : string)
+        self.location = location            # lieu précis de l'incident
         self.witness = witness
         self.description = description
-        self.proof = proof
+        self.proof = proof                  # liens (texte libre)
+        self.proof_attachments = proof_attachments or []  # fichiers uploadés (PDF, images)
         self.send_date = send_date          # string ISO 8601 (conforme au schéma : string)
         self.owner_id = owner_id
         self.status = status
@@ -189,9 +192,11 @@ class Rapport:
             "concerne_rank": self.concerne_rank,
             "event_date": self.event_date,
             "event_hour": self.event_hour,
+            "location": self.location,
             "witness": self.witness,
             "description": self.description,
             "proof": self.proof,
+            "proof_attachments": self.proof_attachments,
             "send_date": self.send_date,
             "owner_id": self.owner_id,
             "status": self.status,
@@ -210,6 +215,8 @@ class Rapport:
         data.setdefault("reponses", [])
         data.setdefault("archived", False)
         data.setdefault("status_history", [])
+        data.setdefault("location", "")
+        data.setdefault("proof_attachments", [])
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -222,7 +229,7 @@ class Rapport:
     @classmethod
     def create(cls, owner_id, plaignant_last_name, plaignant_first_name, plaignant_affectation, plaignant_rank,
                concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
-               event_date, event_hour, witness, description, proof):
+               event_date, event_hour, location, witness, description, proof):
         db = get_db()
         new_id = next_id(db, COLLECTION)
         send_date = datetime.utcnow().isoformat(timespec="minutes")
@@ -232,8 +239,8 @@ class Rapport:
             plaignant_affectation=plaignant_affectation, plaignant_rank=plaignant_rank,
             concerne_last_name=concerne_last_name, concerne_first_name=concerne_first_name,
             concerne_affectation=concerne_affectation, concerne_rank=concerne_rank,
-            event_date=event_date, event_hour=event_hour, witness=witness,
-            description=description, proof=proof,
+            event_date=event_date, event_hour=event_hour, location=location, witness=witness,
+            description=description, proof=proof, proof_attachments=[],
             send_date=send_date,
             owner_id=owner_id, status=cls.STATUS_NOUVEAU, note="", reponses=[],
             status_history=[{
@@ -505,6 +512,14 @@ class Rapport:
             return url_for("ceam.detail", rapport_id=self.id, _external=True)
         except RuntimeError:
             return None
+
+    def set_proof_attachments(self, attachments):
+        """Enregistre les fichiers de preuve uploadés au dépôt. Appelé après
+        Rapport.create(), une fois l'ID du dossier connu (nécessaire pour
+        organiser le stockage des fichiers)."""
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"proof_attachments": attachments})
+        self.proof_attachments = attachments
 
     def archive(self):
         """Archive le dossier : il disparaît des vues du déclarant et du

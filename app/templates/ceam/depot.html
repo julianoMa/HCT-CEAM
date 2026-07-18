@@ -2,9 +2,9 @@
 
 {% extends "base.html" %}
 {% block content %}
-{% call page_header("Déclaration", "Déposer un rapport d'évènement indésirable", "Remplis le formulaire ci-dessous pour soumettre un incident à la commission.") %}{% endcall %}
+{% call page_header("Espace déclarant", "Déposer un rapport", "Remplis le formulaire ci-dessous pour soumettre un incident à la commission.") %}{% endcall %}
 
-<form method="post" class="form-card">
+<form method="post" class="form-card" enctype="multipart/form-data">
   {{ form.hidden_tag() }}
 
   <div class="form-section">
@@ -12,13 +12,13 @@
       <span class="form-section__icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </span>
-      Plaignant
+      1. Plaignant
     </h2>
     <div class="form-grid">
       <div class="form-group">{{ form.plaignant_last_name.label }}{{ form.plaignant_last_name() }}</div>
       <div class="form-group">{{ form.plaignant_first_name.label }}{{ form.plaignant_first_name() }}</div>
-      <div class="form-group">{{ form.plaignant_affectation.label }}{{ form.plaignant_affectation() }}</div>
       <div class="form-group">{{ form.plaignant_rank.label }}{{ form.plaignant_rank() }}</div>
+      <div class="form-group">{{ form.plaignant_affectation.label }}{{ form.plaignant_affectation() }}</div>
     </div>
   </div>
 
@@ -27,13 +27,13 @@
       <span class="form-section__icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
       </span>
-      Personne concernée
+      2. Mis en cause
     </h2>
     <div class="form-grid">
       <div class="form-group">{{ form.concerne_last_name.label }}{{ form.concerne_last_name() }}</div>
       <div class="form-group">{{ form.concerne_first_name.label }}{{ form.concerne_first_name() }}</div>
-      <div class="form-group">{{ form.concerne_affectation.label }}{{ form.concerne_affectation() }}</div>
       <div class="form-group">{{ form.concerne_rank.label }}{{ form.concerne_rank() }}</div>
+      <div class="form-group">{{ form.concerne_affectation.label }}{{ form.concerne_affectation() }}</div>
     </div>
   </div>
 
@@ -42,15 +42,61 @@
       <span class="form-section__icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       </span>
-      Description de l'événement
+      3. Circonstances de l'incident
     </h2>
     <div class="form-grid">
       <div class="form-group">{{ form.event_date.label }}{{ form.event_date() }}</div>
       <div class="form-group">{{ form.event_hour.label }}{{ form.event_hour() }}</div>
-      <div class="form-group form-group--full">{{ form.witness.label }}{{ form.witness(placeholder="Nom(s) des témoins éventuels…") }}</div>
-      <div class="form-group form-group--full">{{ form.description.label }}{{ form.description(placeholder="Décris les faits de manière détaillée et objective…") }}</div>
-      <div class="form-group form-group--full">{{ form.proof.label }}{{ form.proof(placeholder="Liens vers vidéos, photos ou autres preuves…") }}</div>
+      <div class="form-group form-group--full">{{ form.location.label }}{{ form.location(placeholder="Ex: Bloc opératoire n°2, TMC…") }}</div>
     </div>
+  </div>
+
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6M9 9h1"/></svg>
+      </span>
+      4. Exposé des faits
+    </h2>
+    <div class="form-grid form-grid--single">
+      <div class="form-group">
+        {{ form.description.label }}
+        {{ form.description(rows=8, placeholder="Décris les faits dans l'ordre où ils se sont produits, sans interprétation ni jugement de valeur…") }}
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      </span>
+      5. Témoins de l'incident
+    </h2>
+    <div class="form-grid form-grid--single">
+      <div class="form-group">{{ form.witness.label }}{{ form.witness(placeholder="Nom(s) des témoins éventuels, ou 'Aucun'…") }}</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2 class="form-section__title">
+      <span class="form-section__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+      </span>
+      Preuves
+    </h2>
+    <p class="prose" style="margin-bottom: 0.75rem;">Liens ou fichiers à l'appui du rapport (facultatif).</p>
+    <button type="button" class="btn-secondary" data-open-modal="preuves-modal">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Ajouter des preuves
+    </button>
+  </div>
+
+  <div class="form-section">
+    <label class="ceam-checkbox">
+      {{ form.certification(required=True) }}
+      <span>{{ form.certification.label.text }}</span>
+    </label>
   </div>
 
   <div class="form-actions">
@@ -58,6 +104,24 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
       Envoyer le rapport
     </button>
+  </div>
+
+  <div class="modal-overlay" id="preuves-modal" aria-hidden="true">
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="preuves-modal-title">
+      <h2 id="preuves-modal-title" class="modal__title">Ajouter des preuves</h2>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        {{ form.proof.label }}
+        {{ form.proof(rows=4, placeholder="Colle ici un ou plusieurs liens (vidéo, photo...), un par ligne…") }}
+      </div>
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        {{ form.proof_files.label }}
+        {{ form.proof_files(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp") }}
+        <p class="info-card__meta" style="margin-top: 4px;">PDF ou images, plusieurs fichiers possibles, 650 Ko max par fichier.</p>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn-primary" data-close-modal>Terminé</button>
+      </div>
+    </div>
   </div>
 </form>
 {% endblock %}

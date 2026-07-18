@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import MultipleFileField
-from wtforms import DateField, SelectField, StringField, TextAreaField, TimeField
+from wtforms import BooleanField, DateField, SelectField, StringField, TextAreaField, TimeField
 from wtforms.validators import DataRequired, Length, Optional
 
 from app.models.ceam import Rapport
@@ -9,24 +9,43 @@ AFFECTATION_CHOICES = [(a, a) for a in Rapport.AFFECTATIONS]
 
 
 class RapportForm(FlaskForm):
-    # Plaignant
-    plaignant_last_name = StringField("Nom du plaignant", validators=[DataRequired(), Length(max=80)])
-    plaignant_first_name = StringField("Prénom du plaignant", validators=[DataRequired(), Length(max=80)])
-    plaignant_affectation = SelectField("Affectation du plaignant", choices=AFFECTATION_CHOICES)
-    plaignant_rank = StringField("Grade du plaignant", validators=[DataRequired(), Length(max=50)])
+    # 1. Plaignant
+    plaignant_last_name = StringField("Nom", validators=[DataRequired(), Length(max=80)])
+    plaignant_first_name = StringField("Prénom", validators=[DataRequired(), Length(max=80)])
+    plaignant_rank = StringField("Grade", validators=[DataRequired(), Length(max=50)])
+    plaignant_affectation = SelectField("Affectation", choices=AFFECTATION_CHOICES)
 
-    # Concerné
-    concerne_last_name = StringField("Nom du concerné", validators=[DataRequired(), Length(max=80)])
-    concerne_first_name = StringField("Prénom du concerné", validators=[DataRequired(), Length(max=80)])
-    concerne_affectation = SelectField("Affectation du concerné", choices=AFFECTATION_CHOICES)
-    concerne_rank = StringField("Grade du concerné", validators=[DataRequired(), Length(max=50)])
+    # 2. Mis en cause
+    concerne_last_name = StringField("Nom", validators=[DataRequired(), Length(max=80)])
+    concerne_first_name = StringField("Prénom", validators=[DataRequired(), Length(max=80)])
+    concerne_rank = StringField("Grade", validators=[DataRequired(), Length(max=50)])
+    concerne_affectation = SelectField("Affectation", choices=AFFECTATION_CHOICES)
 
-    # Événement
-    event_date = DateField("Date de l'événement", validators=[DataRequired()])
-    event_hour = TimeField("Heure de l'événement", validators=[DataRequired()])
+    # 3. Circonstances de l'incident
+    event_date = DateField("Date de l'incident", validators=[DataRequired()])
+    event_hour = TimeField("Heure approximative", validators=[DataRequired()])
+    location = StringField("Lieu précis", validators=[DataRequired(), Length(max=150)])
+
+    # 4. Exposé des faits
+    description = TextAreaField(
+        "Description chronologique et factuelle, sans jugement de valeur",
+        validators=[DataRequired()],
+    )
+
+    # 5. Témoins de l'incident
     witness = TextAreaField("Témoin(s)", validators=[Optional()])
-    description = TextAreaField("Description détaillée", validators=[DataRequired()])
+
+    # Preuves (ouvertes via un modal : liens + fichiers)
     proof = TextAreaField("Lien(s) preuve (vidéo, photo...)", validators=[Optional()])
+    proof_files = MultipleFileField("Fichiers de preuve (PDF, images)")
+
+    # Certification sur l'honneur
+    certification = BooleanField(
+        "Le plaignant certifie sur l'honneur l'exactitude des faits rapportés dans le "
+        "présent formulaire. Il est informé que toute déclaration mensongère ou "
+        "manifestement abusive peut faire l'objet d'un examen distinct par la Commission.",
+        validators=[DataRequired(message="Tu dois certifier l'exactitude des faits pour envoyer le rapport.")],
+    )
 
 
 class InstructionForm(FlaskForm):

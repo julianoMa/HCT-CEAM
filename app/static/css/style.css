@@ -1769,3 +1769,27 @@ body.sidebar-open {
     padding: 2.5rem 1.5rem 4rem;
   }
 }
+
+/* ── Checkbox de certification (dépôt de rapport) ── */
+
+.ceam-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.ceam-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.ceam-checkbox span {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}

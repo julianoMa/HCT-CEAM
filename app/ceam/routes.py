@@ -32,17 +32,45 @@ def depot():
             concerne_rank=form.concerne_rank.data,
             event_date=form.event_date.data.isoformat(),
             event_hour=form.event_hour.data.strftime("%H:%M"),
+            location=form.location.data,
             witness=form.witness.data,
             description=form.description.data,
             proof=form.proof.data,
         )
+
+        # Les fichiers ne peuvent être uploadés qu'une fois l'ID du dossier
+        # connu (le stockage est organisé par dossier) : on le fait donc
+        # juste après la création, puis on rattache le résultat au rapport.
+        attachments = []
+        rejected = []
+        for uploaded in request.files.getlist("proof_files"):
+            if not uploaded or not uploaded.filename:
+                continue
+            try:
+                meta = upload_reponse_attachment(rapport.id, uploaded)
+            except Exception:  # noqa: BLE001 - un souci Storage ne doit pas bloquer le dépôt
+                meta = None
+            if meta:
+                attachments.append(meta)
+            else:
+                rejected.append(uploaded.filename)
+        if attachments:
+            rapport.set_proof_attachments(attachments)
+
         AuditLog.record(
             action=AuditLog.ACTION_RAPPORT_CREATE,
             actor_name=current_user.name,
             actor_id=current_user.id,
             details=f"{current_user.name} a déposé le rapport {rapport.reference}",
         )
-        flash("Rapport envoyé à la commission.", "success")
+        if rejected:
+            flash(
+                "Rapport envoyé, mais certains fichiers de preuve ont été ignorés (type non "
+                "autorisé, PDF/image uniquement, 650 Ko max) : " + ", ".join(rejected),
+                "danger",
+            )
+        else:
+            flash("Rapport envoyé à la commission.", "success")
         return redirect(url_for("ceam.mes_dossiers"))
 
     return render_template("ceam/depot.html", form=form)
