@@ -122,9 +122,28 @@ def suivi():
 @requires_role(User.ROLE_MEMBRE_CEAM)
 def archives():
     search_query = request.args.get("q", "")
+    limit = request.args.get("limit", type=int)
+    if limit not in (10, 25, 50, 100):
+        limit = 25
+    page = request.args.get("page", type=int) or 1
+
     rapports = Rapport.query_archived()
     rapports = Rapport.filter_by_search(rapports, search_query)
-    return render_template("ceam/archives.html", rapports=rapports, search_query=search_query)
+    total_count = len(rapports)
+    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * limit
+    rapports = rapports[start:start + limit]
+
+    return render_template(
+        "ceam/archives.html",
+        rapports=rapports,
+        search_query=search_query,
+        limit=limit,
+        total_count=total_count,
+        page=page,
+        total_pages=total_pages,
+    )
 
 
 @bp.route("/dossier/<int:rapport_id>", methods=["GET", "POST"])
