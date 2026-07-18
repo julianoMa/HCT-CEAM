@@ -252,6 +252,15 @@ class Rapport:
             author_rank="Envoi automatique",
         )
         rapport._notifier_nouveau_rapport()
+
+        from app.models.notification import Notification  # import différé : évite un cycle d'import
+        Notification.create(
+            user_id=owner_id,
+            type=Notification.TYPE_RAPPORT_ENVOYE,
+            message=f"Ton rapport {rapport.reference} a bien été envoyé à la commission.",
+            rapport_id=rapport.id,
+        )
+
         return rapport
 
     @staticmethod
@@ -363,6 +372,7 @@ class Rapport:
         l'historique que si le statut change réellement (pas si seule la
         note est modifiée)."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+        from app.models.notification import Notification  # idem
 
         db = get_db()
         updates = {"status": status, "note": note}
@@ -393,11 +403,18 @@ class Rapport:
                     f"{self.reference} : « {ancien_label} » → « {self.status_label} »"
                 ),
             )
+            Notification.create(
+                user_id=self.owner_id,
+                type=Notification.TYPE_STATUT_CHANGE,
+                message=f"Le statut de ton dossier {self.reference} est passé à : {self.status_label}.",
+                rapport_id=self.id,
+            )
 
     def add_reponse(self, type_, content, author_name, author_rank, attachments=None):
         """Ajoute une réponse officielle à l'historique, la persiste, et
         notifie le déclarant par MP Discord."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+        from app.models.notification import Notification  # idem
 
         db = get_db()
         reponse = {
@@ -417,6 +434,16 @@ class Rapport:
             actor_name=author_name,
             details=f"{author_name} ({author_rank}) a envoyé une réponse « {type_} » sur le dossier {self.reference}",
         )
+        # L'accusé de réception automatique est déjà couvert par la
+        # notification "Rapport envoyé" créée à la création du dossier —
+        # pas besoin de doublonner ici.
+        if type_ != self.ACCUSE_RECEPTION_TYPE:
+            Notification.create(
+                user_id=self.owner_id,
+                type=Notification.TYPE_REPONSE_AJOUTEE,
+                message=f"La commission a ajouté une réponse ({type_}) à ton dossier {self.reference}.",
+                rapport_id=self.id,
+            )
         return reponse
 
     def _notifier_nouveau_rapport(self):
@@ -445,8 +472,8 @@ class Rapport:
             return
         url = self._detail_url()
         contenu = (
-            f"📬 Nouvelle réponse de la commission CEAM sur ton dossier "
-            f"{self.reference} ({reponse['type']})"
+            f"📬 Une mise à jour a été effectuée sur ton dossier {self.reference} : "
+            f"nouvelle réponse de la commission CEAM ({reponse['type']})."
         )
         if url:
             contenu += f"\n{url}"
@@ -462,7 +489,10 @@ class Rapport:
             return
         url = self._detail_url()
         label = self.STATUS_LABELS.get(entry["status"], "Inconnu")
-        contenu = f"🔄 Le statut de ton dossier {self.reference} est passé à : {label}"
+        contenu = (
+            f"🔄 Une mise à jour a été effectuée sur ton dossier {self.reference} : "
+            f"changement de statut.\nNouveau statut : {label}"
+        )
         if url:
             contenu += f"\n{url}"
         send_discord_dm(owner.discord_id, contenu)

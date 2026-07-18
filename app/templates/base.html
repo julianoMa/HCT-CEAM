@@ -44,6 +44,13 @@
       </div>
 
       <nav class="sidebar__nav">
+        <a href="{{ url_for('ceam.notifications') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.notifications' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          Notifications
+          {% if unread_notifications_count %}
+          <span class="sidebar__badge">{{ unread_notifications_count }}</span>
+          {% endif %}
+        </a>
         <span class="sidebar__section-label">Espace déclarant</span>
         <a href="{{ url_for('ceam.depot') }}" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.depot' }}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>

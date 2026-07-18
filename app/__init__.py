@@ -41,4 +41,13 @@ def create_app(config_class=Config):
     def index():
         return redirect(url_for("ceam.mes_dossiers"))
 
+    from flask_login import current_user
+
+    @app.context_processor
+    def inject_unread_notifications():
+        if current_user.is_authenticated:
+            from app.models.notification import Notification
+            return {"unread_notifications_count": Notification.count_unread(current_user.id)}
+        return {"unread_notifications_count": 0}
+
     return app

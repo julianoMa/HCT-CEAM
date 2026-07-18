@@ -1,0 +1,51 @@
+{% from "macros/ui.html" import page_header, empty_state %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Espace déclarant", "Notifications", "Historique des mises à jour sur tes dossiers.") %}
+  {% if unread_count %}
+  <form method="post" action="{{ url_for('ceam.marquer_toutes_notifications_lues') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-secondary">Tout marquer comme lu</button>
+  </form>
+  {% endif %}
+{% endcall %}
+
+<div class="card">
+  {% if notifications %}
+  {% for n in notifications %}
+  <div class="notif-item {{ 'notif-item--unread' if not n.read }}">
+    <div class="notif-item__icon">
+      {% if n.type == "rapport_envoye" %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      {% elif n.type == "statut_change" %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      {% else %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      {% endif %}
+    </div>
+    <div class="notif-item__body">
+      <p class="notif-item__message">{{ n.message }}</p>
+      <span class="notif-item__meta">{{ n.created_at_fr }}</span>
+    </div>
+    <div class="notif-item__actions">
+      {% if n.rapport_id %}
+      <a href="{{ url_for('ceam.detail', rapport_id=n.rapport_id) }}" class="btn-secondary btn-sm">Voir le dossier</a>
+      {% endif %}
+      {% if not n.read %}
+      <form method="post" action="{{ url_for('ceam.marquer_notification_lue', notification_id=n.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-ghost btn-sm">Marquer comme lue</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  {{ empty_state(
+    "Aucune notification",
+    "Tu seras prévenu ici dès qu'il y aura du nouveau sur tes dossiers (statut, réponse de la commission…)."
+  ) }}
+  {% endif %}
+</div>
+{% endblock %}

@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from app.ceam.forms import InstructionForm, RapportForm, ReglementForm, ReponseForm
 from app.models.audit_log import AuditLog
 from app.models.ceam import Rapport
+from app.models.notification import Notification
 from app.models.reglement import Reglement
 from app.models.user import User
 from app.permissions import requires_role
@@ -97,6 +98,17 @@ def detail(rapport_id):
     # direct (seule la commission continue d'y avoir accès, via Archives).
     if rapport.archived and not is_ceam_member:
         abort(403)
+
+    # Consulter son dossier marque automatiquement comme lues les
+    # notifications qui s'y rapportent — mais seulement pour un vrai
+    # déclarant (pas membre CEAM). Un membre CEAM qui possède aussi ce
+    # dossier (cas de test, ou personnel à double casquette) est
+    # présumé y venir pour son travail de commission, pas pour lire ses
+    # propres notifs : sans cette exception, changer soi-même le statut
+    # de son propre dossier marquerait instantanément la notification
+    # comme lue via la redirection qui suit, avant même de l'avoir vue.
+    if is_owner and not is_ceam_member:
+        Notification.mark_read_for_rapport(current_user.id, rapport_id)
 
     instruction_form = None
     reponse_form = None
@@ -262,3 +274,26 @@ def piece_jointe(rapport_id, attachment_id):
         mimetype=content_type or "application/octet-stream",
         headers={"Content-Disposition": f'inline; filename="{display_name}"'},
     )
+
+
+@bp.route("/notifications")
+@login_required
+def notifications():
+    items = Notification.list_for_user(current_user.id)
+    unread_count = sum(1 for n in items if not n.read)
+    return render_template("ceam/notifications.html", notifications=items, unread_count=unread_count)
+
+
+@bp.route("/notifications/<int:notification_id>/lire", methods=["POST"])
+@login_required
+def marquer_notification_lue(notification_id):
+    Notification.mark_read(notification_id, current_user.id)
+    return redirect(request.referrer or url_for("ceam.notifications"))
+
+
+@bp.route("/notifications/tout-lire", methods=["POST"])
+@login_required
+def marquer_toutes_notifications_lues():
+    Notification.mark_all_read(current_user.id)
+    flash("Toutes les notifications ont été marquées comme lues.", "success")
+    return redirect(url_for("ceam.notifications"))
