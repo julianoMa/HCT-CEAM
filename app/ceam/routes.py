@@ -80,7 +80,7 @@ def depot():
 @login_required
 def mes_dossiers():
     search_query = request.args.get("q", "")
-    rapports = Rapport.query_by_owner(current_user.id)
+    rapports = Rapport.query_visible_to(current_user.id)
     rapports = Rapport.filter_by_search(rapports, search_query)
     return render_template("ceam/mes_dossiers.html", rapports=rapports, search_query=search_query)
 
@@ -129,27 +129,34 @@ def detail(rapport_id):
         abort(404)
 
     is_owner = rapport.owner_id == current_user.id
+    is_tiers = current_user.id in rapport.tiers_ids
     is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
-    if not is_owner and not is_ceam_member:
+    if not is_owner and not is_tiers and not is_ceam_member:
         abort(403)
-    # Un dossier archivé n'est plus visible par le déclarant, même par lien
-    # direct (seule la commission continue d'y avoir accès, via Archives).
+    # Un dossier archivé n'est plus visible par le déclarant (ni un tiers),
+    # même par lien direct (seule la commission continue d'y avoir accès,
+    # via Archives).
     if rapport.archived and not is_ceam_member:
         abort(403)
 
     # Consulter son dossier marque automatiquement comme lues les
     # notifications qui s'y rapportent — mais seulement pour un vrai
-    # déclarant (pas membre CEAM). Un membre CEAM qui possède aussi ce
-    # dossier (cas de test, ou personnel à double casquette) est
+    # déclarant ou tiers (pas membre CEAM). Un membre CEAM qui possède aussi
+    # ce dossier (cas de test, ou personnel à double casquette) est
     # présumé y venir pour son travail de commission, pas pour lire ses
     # propres notifs : sans cette exception, changer soi-même le statut
     # de son propre dossier marquerait instantanément la notification
     # comme lue via la redirection qui suit, avant même de l'avoir vue.
-    if is_owner and not is_ceam_member:
+    if (is_owner or is_tiers) and not is_ceam_member:
         Notification.mark_read_for_rapport(current_user.id, rapport_id)
 
     instruction_form = None
     reponse_form = None
+    tiers_users = [u for u in (User.get(uid) for uid in rapport.tiers_ids) if u is not None]
+    available_users = None
+    if is_ceam_member:
+        excluded_ids = {rapport.owner_id, *rapport.tiers_ids}
+        available_users = [u for u in User.list_all() if u.id not in excluded_ids]
 
     if is_ceam_member:
         instruction_form = InstructionForm(status=rapport.status, note=rapport.note)
@@ -208,6 +215,8 @@ def detail(rapport_id):
         instruction_form=instruction_form,
         reponse_form=reponse_form,
         is_ceam_member=is_ceam_member,
+        tiers_users=tiers_users,
+        available_users=available_users,
     )
 
 
@@ -368,8 +377,9 @@ def export_pdf(rapport_id):
         abort(404)
 
     is_owner = rapport.owner_id == current_user.id
+    is_tiers = current_user.id in rapport.tiers_ids
     is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
-    if not is_owner and not is_ceam_member:
+    if not is_owner and not is_tiers and not is_ceam_member:
         abort(403)
     if rapport.archived and not is_ceam_member:
         abort(403)
@@ -380,3 +390,54 @@ def export_pdf(rapport_id):
         mimetype="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{rapport.reference}.pdf"'},
     )
+
+
+@bp.route("/dossier/<int:rapport_id>/tiers/ajouter", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_MEMBRE_CEAM)
+def ajouter_tiers(rapport_id):
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+
+    user_id = request.form.get("user_id", type=int)
+    user = User.get(user_id) if user_id else None
+
+    if user is None:
+        flash("Utilisateur introuvable.", "danger")
+    elif not rapport.add_tiers(user_id):
+        flash(f"{user.name} a déjà accès à ce dossier.", "danger")
+    else:
+        AuditLog.record(
+            action=AuditLog.ACTION_TIERS_ADD,
+            actor_name=current_user.name,
+            actor_id=current_user.id,
+            details=f"{current_user.name} a donné accès au dossier {rapport.reference} à {user.name}",
+        )
+        flash(f"{user.name} a été ajouté au dossier et peut désormais le consulter.", "success")
+
+    return redirect(url_for("ceam.detail", rapport_id=rapport_id))
+
+
+@bp.route("/dossier/<int:rapport_id>/tiers/<int:user_id>/retirer", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_MEMBRE_CEAM)
+def retirer_tiers(rapport_id, user_id):
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+
+    user = User.get(user_id)
+    if rapport.remove_tiers(user_id):
+        AuditLog.record(
+            action=AuditLog.ACTION_TIERS_REMOVE,
+            actor_name=current_user.name,
+            actor_id=current_user.id,
+            details=(
+                f"{current_user.name} a retiré l'accès au dossier {rapport.reference} "
+                f"à {user.name if user else user_id}"
+            ),
+        )
+        flash("Accès retiré.", "success")
+
+    return redirect(url_for("ceam.detail", rapport_id=rapport_id))

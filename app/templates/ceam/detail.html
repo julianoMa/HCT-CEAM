@@ -202,6 +202,55 @@
 </div>
 {% endif %}
 
+{% if is_ceam_member %}
+<div class="card card--padded" style="margin-bottom: 1rem;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+    <p class="prose-label" style="margin: 0;">Accès au dossier</p>
+    <button type="button" class="btn-secondary btn-sm" data-open-modal="tiers-modal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+      Ajouter un tiers
+    </button>
+  </div>
+  {% if tiers_users %}
+  <div class="reponse-list">
+    {% for u in tiers_users %}
+    <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <span>{{ u.name }} <span class="data-table__muted">({{ u.role_label }})</span></span>
+      <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-ghost btn-sm">Retirer</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-state__text" style="margin: 0;">Seuls le déclarant et la commission ont accès à ce dossier pour le moment.</p>
+  {% endif %}
+</div>
+
+<div class="modal-overlay" id="tiers-modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tiers-modal-title">
+    <h2 id="tiers-modal-title" class="modal__title">Ajouter un tiers</h2>
+    <form method="post" action="{{ url_for('ceam.ajouter_tiers', rapport_id=rapport.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label>Utilisateur</label>
+        <select name="user_id" required>
+          <option value="" disabled selected>Choisir une personne…</option>
+          {% for u in available_users %}
+          <option value="{{ u.id }}">{{ u.name }} ({{ u.role_label }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit">Ajouter</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 {% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
 {% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
 {% if can_archive or can_delete %}

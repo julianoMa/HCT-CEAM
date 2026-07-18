@@ -58,7 +58,7 @@ class Rapport:
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, location, witness, description, proof,
                  send_date, owner_id, status, note, reponses=None, archived=False, status_history=None,
-                 proof_attachments=None):
+                 proof_attachments=None, tiers_ids=None):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -90,6 +90,9 @@ class Rapport:
         # Historique des changements de statut : liste de dicts
         # {status, author_name, author_rank, changed_at}.
         self.status_history = status_history or []
+        # Tiers ajoutés par la commission : utilisateurs (autres que le
+        # déclarant) autorisés à consulter ce dossier, en plus de la CEAM.
+        self.tiers_ids = tiers_ids or []
 
     # --- Confort d'affichage ---
     @property
@@ -204,6 +207,7 @@ class Rapport:
             "reponses": self.reponses,
             "archived": self.archived,
             "status_history": self.status_history,
+            "tiers_ids": self.tiers_ids,
         }
 
     @classmethod
@@ -217,6 +221,7 @@ class Rapport:
         data.setdefault("status_history", [])
         data.setdefault("location", "")
         data.setdefault("proof_attachments", [])
+        data.setdefault("tiers_ids", [])
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -275,15 +280,30 @@ class Rapport:
         return sorted(rapports, key=lambda r: r.send_date or "", reverse=True)
 
     @classmethod
-    def query_by_owner(cls, owner_id):
+    def query_visible_to(cls, user_id):
+        """Dossiers visibles pour un déclarant : les siens, plus ceux où il
+        a été ajouté comme tiers par la commission (non archivés)."""
         db = get_db()
-        docs = (
+        docs_owner = (
             db.collection(COLLECTION)
-            .where(filter=FieldFilter("owner_id", "==", owner_id))
+            .where(filter=FieldFilter("owner_id", "==", user_id))
             .where(filter=FieldFilter("archived", "==", False))
             .stream()
         )
-        return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
+        docs_tiers = (
+            db.collection(COLLECTION)
+            .where(filter=FieldFilter("tiers_ids", "array_contains", user_id))
+            .where(filter=FieldFilter("archived", "==", False))
+            .stream()
+        )
+        rapports_by_id = {}
+        for d in docs_owner:
+            r = cls._from_doc(d)
+            rapports_by_id[r.id] = r
+        for d in docs_tiers:
+            r = cls._from_doc(d)
+            rapports_by_id[r.id] = r
+        return cls._sort_by_send_date_desc(list(rapports_by_id.values()))
 
     @classmethod
     def query_open(cls, status_filter=None):
@@ -522,6 +542,54 @@ class Rapport:
         db = get_db()
         db.collection(COLLECTION).document(str(self.id)).update({"proof_attachments": attachments})
         self.proof_attachments = attachments
+
+    def add_tiers(self, user_id):
+        """Ajoute un utilisateur tiers, qui pourra désormais consulter ce
+        dossier (et sera notifié in-app + Discord). Retourne False sans
+        rien faire si la personne est déjà le déclarant ou déjà tiers."""
+        if user_id == self.owner_id or user_id in self.tiers_ids:
+            return False
+        db = get_db()
+        tiers_ids = self.tiers_ids + [user_id]
+        db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
+        self.tiers_ids = tiers_ids
+        self._notifier_tiers_ajoute(user_id)
+        return True
+
+    def remove_tiers(self, user_id):
+        """Retire l'accès d'un tiers précédemment ajouté."""
+        if user_id not in self.tiers_ids:
+            return False
+        db = get_db()
+        tiers_ids = [t for t in self.tiers_ids if t != user_id]
+        db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
+        self.tiers_ids = tiers_ids
+        return True
+
+    def _notifier_tiers_ajoute(self, user_id):
+        """Notifie (in-app + MP Discord) la personne ajoutée comme tiers."""
+        from app.models.notification import Notification  # import différé : évite un cycle d'import
+        from app.models.user import User
+        from app.notifications import build_embed, send_discord_dm
+
+        Notification.create(
+            user_id=user_id,
+            type=Notification.TYPE_TIERS_AJOUTE,
+            message=f"Tu as été ajouté(e) au dossier {self.reference} et peux désormais le consulter.",
+            rapport_id=self.id,
+        )
+        user = User.get(user_id)
+        if user is None:
+            return
+        embed = build_embed(
+            title=f"👥 Accès au dossier {self.reference}",
+            description=(
+                "La commission t'a ajouté(e) à ce dossier en tant que tiers : "
+                "tu peux désormais le consulter."
+            ),
+            url=self._detail_url(),
+        )
+        send_discord_dm(user.discord_id, embed=embed)
 
     def archive(self):
         """Archive le dossier : il disparaît des vues du déclarant et du
