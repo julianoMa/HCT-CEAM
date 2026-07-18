@@ -469,6 +469,17 @@ a:hover { color: var(--accent-hover); }
   letter-spacing: -0.02em;
 }
 
+.error-page__code {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0 0 0.5rem;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .auth-card p {
   color: var(--text-secondary);
   margin: 0 0 1.5rem;

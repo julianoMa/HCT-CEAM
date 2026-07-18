@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEAM — Accès refusé</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem("ceam-theme");
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var theme = saved || (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-layout">
+    <div class="auth-card">
+      <div class="auth-card__logo">
+        <span class="auth-card__logo-wrap">
+          <img src="https://www.zupimages.net/up/22/30/as83.png" alt="CEAM" class="auth-card__logo-img">
+        </span>
+      </div>
+      <p class="error-page__code">403</p>
+      <h1>Accès refusé</h1>
+      <p>
+        Tu n'as pas la permission d'accéder à cette page. Si tu penses que
+        c'est une erreur, contacte un administrateur de la CEAM.
+      </p>
+      <a href="{{ url_for('ceam.accueil') if current_user.is_authenticated else url_for('auth.login') }}" class="btn btn-primary">
+        Retour à l'accueil
+      </a>
+    </div>
+  </div>
+</body>
+</html>
