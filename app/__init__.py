@@ -39,7 +39,7 @@ def create_app(config_class=Config):
 
     @app.route("/")
     def index():
-        return redirect(url_for("ceam.mes_dossiers"))
+        return redirect(url_for("ceam.accueil"))
 
     from flask_login import current_user
 

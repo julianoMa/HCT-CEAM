@@ -297,3 +297,11 @@ def marquer_toutes_notifications_lues():
     Notification.mark_all_read(current_user.id)
     flash("Toutes les notifications ont été marquées comme lues.", "success")
     return redirect(url_for("ceam.notifications"))
+
+
+@bp.route("/accueil")
+@login_required
+def accueil():
+    """Page d'accueil pédagogique : présentation de la CEAM, son rôle, ses
+    missions, et le fonctionnement général du traitement des dossiers."""
+    return render_template("ceam/accueil.html")
