@@ -317,7 +317,6 @@ def statistiques():
         "ceam/statistiques.html",
         stats=stats,
         status_labels=Rapport.STATUS_LABELS,
-        seuil_relance=Rapport.STALE_NOUVEAU_JOURS,
     )
 
 

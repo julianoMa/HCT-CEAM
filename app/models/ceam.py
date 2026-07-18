@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from google.cloud.firestore_v1 import FieldFilter
 
@@ -332,57 +332,100 @@ class Rapport:
         docs = db.collection(COLLECTION).stream()
         return sum(1 for _ in docs)
 
+    # Dimensions du graphique en aire (évolution hebdomadaire), en unités SVG.
+    _CHART_WIDTH = 700
+    _CHART_HEIGHT = 180
+    _CHART_PADDING_TOP = 16
+    _CHART_PADDING_BOTTOM = 24
+    _CHART_WEEKS = 12
+
+    @classmethod
+    def _build_weekly_chart(cls, rapports):
+        """Construit la série des dépôts par semaine (12 dernières semaines,
+        y compris celles à 0 dossier) et les coordonnées SVG prêtes à
+        afficher pour un graphique en aire, sans dépendance JS."""
+        weekly_counts = {}
+        for r in rapports:
+            if not r.send_date:
+                continue
+            try:
+                dt = datetime.fromisoformat(r.send_date)
+            except (ValueError, TypeError):
+                continue
+            monday = dt.date() - timedelta(days=dt.weekday())
+            weekly_counts[monday] = weekly_counts.get(monday, 0) + 1
+
+        today = datetime.utcnow().date()
+        current_monday = today - timedelta(days=today.weekday())
+        weeks = [current_monday - timedelta(weeks=i) for i in range(cls._CHART_WEEKS - 1, -1, -1)]
+        series = [{"label": w.strftime("%d/%m"), "count": weekly_counts.get(w, 0)} for w in weeks]
+
+        max_count = max((w["count"] for w in series), default=0)
+        max_count_safe = max_count or 1  # évite une division par zéro si tout est à 0
+        usable_height = cls._CHART_HEIGHT - cls._CHART_PADDING_TOP - cls._CHART_PADDING_BOTTOM
+        baseline_y = cls._CHART_HEIGHT - cls._CHART_PADDING_BOTTOM
+        step_x = cls._CHART_WIDTH / (len(series) - 1) if len(series) > 1 else 0
+
+        coords = [
+            (
+                round(i * step_x, 1),
+                round(baseline_y - (w["count"] / max_count_safe) * usable_height, 1),
+            )
+            for i, w in enumerate(series)
+        ]
+        points = " ".join(f"{x},{y}" for x, y in coords)
+        area_points = f"0,{baseline_y} {points} {cls._CHART_WIDTH},{baseline_y}"
+
+        return {
+            "series": series,
+            "points": points,
+            "area_points": area_points,
+            "max_count": max_count,
+            "width": cls._CHART_WIDTH,
+            "height": cls._CHART_HEIGHT,
+        }
+
+    @staticmethod
+    def _affectation_breakdown(rapports, field_name):
+        counts = {a: 0 for a in Rapport.AFFECTATIONS}
+        for r in rapports:
+            value = getattr(r, field_name, None)
+            if value in counts:
+                counts[value] += 1
+        total = sum(counts.values())
+        if total:
+            percentages = {a: round(counts[a] / total * 100, 1) for a in Rapport.AFFECTATIONS}
+        else:
+            percentages = {a: 0 for a in Rapport.AFFECTATIONS}
+        return {"counts": counts, "total": total, "percentages": percentages}
+
     @classmethod
     def compute_statistiques(cls):
         """Calcule toutes les statistiques de la page Statistiques en un
-        seul passage sur la collection (comptages par statut, délai moyen
-        de traitement, répartition TMC/NMH, alertes de relance)."""
+        seul passage sur la collection (comptages par statut, répartition
+        TMC/NMH du plaignant et du mis en cause, évolution hebdomadaire
+        des dépôts)."""
         db = get_db()
         rapports = [cls._from_doc(d) for d in db.collection(COLLECTION).stream()]
 
         counts_by_status = {value: 0 for value in cls.STATUS_LABELS}
-        affectation_counts = {a: 0 for a in cls.AFFECTATIONS}
-        delais = []
-        relances = []
-
         for r in rapports:
             counts_by_status[r.status] = counts_by_status.get(r.status, 0) + 1
 
-            if r.plaignant_affectation in affectation_counts:
-                affectation_counts[r.plaignant_affectation] += 1
-
-            delai = r.delai_traitement_jours
-            if delai is not None:
-                delais.append(delai)
-
-            jours = r.jours_depuis_depot
-            if (
-                not r.archived
-                and r.status == cls.STATUS_NOUVEAU
-                and jours is not None
-                and jours >= cls.STALE_NOUVEAU_JOURS
-            ):
-                relances.append(r)
-
-        relances.sort(key=lambda r: r.send_date or "")
-
-        affectation_total = sum(affectation_counts.values())
-        if affectation_total:
-            affectation_percentages = {
-                a: round(affectation_counts[a] / affectation_total * 100, 1) for a in cls.AFFECTATIONS
-            }
-        else:
-            affectation_percentages = {a: 0 for a in cls.AFFECTATIONS}
+        plaignant_affectation = cls._affectation_breakdown(rapports, "plaignant_affectation")
+        concerne_affectation = cls._affectation_breakdown(rapports, "concerne_affectation")
+        weekly_chart = cls._build_weekly_chart(rapports)
 
         return {
             "total": len(rapports),
             "counts_by_status": counts_by_status,
-            "delai_moyen_jours": (sum(delais) / len(delais)) if delais else None,
-            "delai_moyen_dossiers": len(delais),
-            "affectation_counts": affectation_counts,
-            "affectation_total": affectation_total,
-            "affectation_percentages": affectation_percentages,
-            "relances": relances,
+            "affectation_counts": plaignant_affectation["counts"],
+            "affectation_total": plaignant_affectation["total"],
+            "affectation_percentages": plaignant_affectation["percentages"],
+            "concerne_affectation_counts": concerne_affectation["counts"],
+            "concerne_affectation_total": concerne_affectation["total"],
+            "concerne_affectation_percentages": concerne_affectation["percentages"],
+            "weekly_chart": weekly_chart,
         }
 
     def update_instruction(self, status, note, author_name, author_rank):

@@ -2037,3 +2037,57 @@ body.sidebar-open {
 .internal-section-divider svg {
   flex-shrink: 0;
 }
+
+/* ── Graphique en aire (évolution hebdomadaire des dépôts) ── */
+
+.weekly-chart {
+  width: 100%;
+  height: 180px;
+  display: block;
+  overflow: visible;
+}
+
+.weekly-chart__area {
+  fill: var(--accent);
+  fill-opacity: 0.15;
+  stroke: none;
+}
+
+.weekly-chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.weekly-chart__labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.weekly-chart__labels span {
+  flex: 1;
+  text-align: center;
+}
+
+.weekly-chart__labels span:first-child {
+  text-align: left;
+}
+
+.weekly-chart__labels span:last-child {
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .weekly-chart__labels span {
+    display: none;
+  }
+  .weekly-chart__labels span:first-child,
+  .weekly-chart__labels span:last-child {
+    display: block;
+  }
+}
