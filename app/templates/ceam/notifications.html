@@ -2,7 +2,7 @@
 
 {% extends "base.html" %}
 {% block content %}
-{% call page_header("Espace déclarant", "Notifications", "Historique des mises à jour sur tes dossiers.") %}
+{% call page_header("Espace Personnel", "Notifications", "Historique des mises à jour sur tes dossiers.") %}
   {% if unread_count %}
   <form method="post" action="{{ url_for('ceam.marquer_toutes_notifications_lues') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

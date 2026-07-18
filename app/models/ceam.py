@@ -456,53 +456,55 @@ class Rapport:
     def _notifier_nouveau_rapport(self):
         """MP à tous les membres de la commission lors du dépôt d'un rapport."""
         from app.models.user import User  # import différé : évite un cycle d'import
-        from app.notifications import send_discord_dm
+        from app.notifications import build_embed, send_discord_dm
 
-        url = self._detail_url()
-        contenu = (
-            f"📋 Nouveau rapport déposé sur la CEAM : {self.reference}\n"
-            f"{self.plaignant_first_name} {self.plaignant_last_name} c/ "
-            f"{self.concerne_first_name} {self.concerne_last_name}"
+        embed = build_embed(
+            title=f"📋 Nouveau rapport : {self.reference}",
+            description=(
+                f"{self.plaignant_first_name} {self.plaignant_last_name} c/ "
+                f"{self.concerne_first_name} {self.concerne_last_name}"
+            ),
+            fields=[
+                {"name": "Affectation", "value": self.plaignant_affectation, "inline": True},
+                {"name": "Statut", "value": self.status_label, "inline": True},
+            ],
+            url=self._detail_url(),
         )
-        if url:
-            contenu += f"\n{url}"
         for membre in User.list_ceam_members():
-            send_discord_dm(membre.discord_id, contenu)
+            send_discord_dm(membre.discord_id, embed=embed)
 
     def _notifier_nouvelle_reponse(self, reponse):
         """MP au déclarant lors de l'ajout d'une réponse officielle."""
         from app.models.user import User  # import différé : évite un cycle d'import
-        from app.notifications import send_discord_dm
+        from app.notifications import build_embed, send_discord_dm
 
         owner = User.get(self.owner_id)
         if owner is None:
             return
-        url = self._detail_url()
-        contenu = (
-            f"📬 Une mise à jour a été effectuée sur ton dossier {self.reference} : "
-            f"nouvelle réponse de la commission CEAM ({reponse['type']})."
+        embed = build_embed(
+            title=f"📬 Mise à jour de ton dossier {self.reference}",
+            description="La commission a ajouté une nouvelle réponse officielle à ton dossier.",
+            fields=[{"name": "Type de réponse", "value": reponse["type"], "inline": False}],
+            url=self._detail_url(),
         )
-        if url:
-            contenu += f"\n{url}"
-        send_discord_dm(owner.discord_id, contenu)
+        send_discord_dm(owner.discord_id, embed=embed)
 
     def _notifier_changement_statut(self, entry):
         """MP au déclarant lors d'un changement de statut."""
         from app.models.user import User  # import différé : évite un cycle d'import
-        from app.notifications import send_discord_dm
+        from app.notifications import build_embed, send_discord_dm
 
         owner = User.get(self.owner_id)
         if owner is None:
             return
-        url = self._detail_url()
         label = self.STATUS_LABELS.get(entry["status"], "Inconnu")
-        contenu = (
-            f"🔄 Une mise à jour a été effectuée sur ton dossier {self.reference} : "
-            f"changement de statut.\nNouveau statut : {label}"
+        embed = build_embed(
+            title=f"🔄 Mise à jour de ton dossier {self.reference}",
+            description="Le statut de ton dossier a changé.",
+            fields=[{"name": "Nouveau statut", "value": label, "inline": False}],
+            url=self._detail_url(),
         )
-        if url:
-            contenu += f"\n{url}"
-        send_discord_dm(owner.discord_id, contenu)
+        send_discord_dm(owner.discord_id, embed=embed)
 
     def _detail_url(self):
         """URL absolue vers la page de détail de ce dossier, ou None si

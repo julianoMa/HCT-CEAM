@@ -9,12 +9,36 @@ Causes fréquentes d'échec : la personne a désactivé les MP venant des
 membres du serveur, ou le bot n'a pas encore été invité sur le serveur HCT.
 """
 
+from datetime import datetime, timezone
+
 import requests
 from flask import current_app
 
+# Doré, cohérent avec l'identité visuelle du site (variable CSS --accent).
+ACCENT_COLOR = 0xF4B65D
 
-def send_discord_dm(discord_id, content):
-    """Envoie un MP Discord. Retourne True si envoyé, False sinon."""
+
+def build_embed(title, description, fields=None, url=None):
+    """Construit un embed Discord simple et cohérent (couleur, pied de
+    page, horodatage), utilisé pour toutes les notifications CEAM."""
+    embed = {
+        "title": title,
+        "description": description,
+        "color": ACCENT_COLOR,
+        "footer": {"text": "Commission d'Éthique des Affaires Médicales"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if url:
+        embed["url"] = url
+    if fields:
+        embed["fields"] = fields
+    return embed
+
+
+def send_discord_dm(discord_id, content=None, embed=None):
+    """Envoie un MP Discord — sous forme d'embed si `embed` est fourni
+    (recommandé, voir build_embed), sinon en texte brut via `content`.
+    Retourne True si envoyé, False sinon."""
     bot_token = current_app.config.get("DISCORD_BOT_TOKEN")
     if not bot_token:
         current_app.logger.warning(
@@ -27,6 +51,12 @@ def send_discord_dm(discord_id, content):
         "Content-Type": "application/json",
     }
     base_url = current_app.config["DISCORD_API_BASE_URL"]
+
+    payload = {}
+    if content:
+        payload["content"] = content
+    if embed:
+        payload["embeds"] = [embed]
 
     try:
         channel_resp = requests.post(
@@ -41,7 +71,7 @@ def send_discord_dm(discord_id, content):
         message_resp = requests.post(
             f"{base_url}/channels/{channel_id}/messages",
             headers=headers,
-            json={"content": content},
+            json=payload,
             timeout=10,
         )
         message_resp.raise_for_status()
