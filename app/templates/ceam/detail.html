@@ -76,12 +76,12 @@
 {% endif %}
 
 <div class="card-grid">
-  <div class="info-card">
+  <div class="info-card info-card--blue">
     <p class="info-card__label">Plaignant</p>
     <p class="info-card__name">{{ rapport.plaignant_first_name }} {{ rapport.plaignant_last_name }}</p>
     <p class="info-card__meta">{{ rapport.plaignant_rank }} — {{ rapport.plaignant_affectation }}</p>
   </div>
-  <div class="info-card">
+  <div class="info-card info-card--red">
     <p class="info-card__label">Personne concernée</p>
     <p class="info-card__name">{{ rapport.concerne_first_name }} {{ rapport.concerne_last_name }}</p>
     <p class="info-card__meta">{{ rapport.concerne_rank }} — {{ rapport.concerne_affectation }}</p>
