@@ -1002,7 +1002,7 @@ select {
 
 /* ── Buttons ── */
 
-button, .btn {
+button, .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1208,6 +1208,36 @@ button, .btn {
   background: var(--surface);
   text-decoration: none;
   transition: all var(--transition);
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.attachment-preview__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  max-height: 75vh;
+  overflow: auto;
+  background: var(--border-subtle);
+  border-radius: var(--radius-sm);
+  margin-bottom: 1.25rem;
+}
+
+.attachment-preview__image {
+  max-width: 100%;
+  max-height: 75vh;
+  display: block;
+  border-radius: var(--radius-sm);
+}
+
+.attachment-preview__pdf {
+  width: 100%;
+  height: 75vh;
+  border: none;
+  border-radius: var(--radius-sm);
 }
 
 .attachment-card:hover {
@@ -1465,6 +1495,11 @@ body.sidebar-open {
 
 .modal--wide {
   max-width: 560px;
+  text-align: left;
+}
+
+.modal--xl {
+  max-width: 860px;
   text-align: left;
 }
 

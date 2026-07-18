@@ -322,10 +322,12 @@ def piece_jointe(rapport_id, attachment_id):
         abort(404)
 
     display_name = secure_filename(request.args.get("name", "")) or "fichier"
+    force_download = request.args.get("download") == "1"
+    disposition = "attachment" if force_download else "inline"
     return Response(
         data,
         mimetype=content_type or "application/octet-stream",
-        headers={"Content-Disposition": f'inline; filename="{display_name}"'},
+        headers={"Content-Disposition": f'{disposition}; filename="{display_name}"'},
     )
 
 

@@ -242,4 +242,49 @@
       input.disabled = false;
     });
   });
+
+  // ── Prévisualisation des pièces jointes (image ou PDF) dans un modal ──
+  // Un seul modal partagé par page : son contenu est injecté dynamiquement
+  // selon la pièce jointe cliquée, plutôt que d'avoir un modal par fichier.
+  const previewModal = document.getElementById("attachment-preview-modal");
+  if (previewModal) {
+    const previewBody = previewModal.querySelector("[data-preview-body]");
+    const previewTitle = previewModal.querySelector("[data-preview-title]");
+    const previewDownload = previewModal.querySelector("[data-preview-download]");
+
+    document.querySelectorAll("[data-preview-url]").forEach((trigger) => {
+      trigger.addEventListener("click", () => {
+        const url = trigger.dataset.previewUrl;
+        const type = trigger.dataset.previewType;
+        const name = trigger.dataset.previewName;
+
+        if (previewTitle) previewTitle.textContent = name;
+        if (previewDownload) {
+          const separator = url.includes("?") ? "&" : "?";
+          previewDownload.href = `${url}${separator}download=1`;
+        }
+
+        previewBody.innerHTML = "";
+        if (type === "image") {
+          const img = document.createElement("img");
+          img.src = url;
+          img.alt = name;
+          img.className = "attachment-preview__image";
+          previewBody.appendChild(img);
+        } else if (type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = url;
+          iframe.className = "attachment-preview__pdf";
+          previewBody.appendChild(iframe);
+        } else {
+          const p = document.createElement("p");
+          p.className = "empty-state__text";
+          p.textContent = "Aperçu non disponible pour ce type de fichier — utilise le téléchargement.";
+          previewBody.appendChild(p);
+        }
+
+        previewModal.classList.add("is-visible");
+      });
+    });
+  }
 })();
