@@ -1064,13 +1064,13 @@ button svg, .btn svg, .btn-primary svg, .btn-secondary svg, .btn-danger svg, .bt
   flex-shrink: 0;
 }
 
-.btn-primary, button[type="submit"]:not(.btn-secondary):not(.btn-ghost):not(.chat-lock-switch) {
+.btn-primary, button[type="submit"]:not(.btn-secondary):not(.btn-ghost):not(.chat-lock-switch):not(.btn-success):not(.btn-info) {
   background: var(--accent-gradient);
   color: var(--accent-contrast);
   box-shadow: 0 2px 8px rgba(244, 182, 93, 0.35);
 }
 
-.btn-primary:hover, button[type="submit"]:not(.btn-secondary):not(.btn-ghost):not(.chat-lock-switch):hover {
+.btn-primary:hover, button[type="submit"]:not(.btn-secondary):not(.btn-ghost):not(.chat-lock-switch):not(.btn-success):not(.btn-info):hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(244, 182, 93, 0.45);
   color: var(--accent-contrast);
@@ -1105,6 +1105,26 @@ button svg, .btn svg, .btn-primary svg, .btn-secondary svg, .btn-danger svg, .bt
 
 .btn-danger:hover {
   background: #b91c1c;
+  color: #fff;
+}
+
+.btn-success {
+  background: rgb(57, 180, 102);
+  color: #fff;
+}
+
+.btn-success:hover {
+  background: rgb(45, 163, 88);
+  color: #fff;
+}
+
+.btn-info {
+  background: var(--info-text);
+  color: #fff;
+}
+
+.btn-info:hover {
+  background: var(--info-border);
   color: #fff;
 }
 
