@@ -1283,6 +1283,50 @@ button svg, .btn svg, .btn-primary svg, .btn-secondary svg, .btn-danger svg, .bt
   cursor: pointer;
 }
 
+.chat-panel__pending-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chat-panel__pending-attachments:empty {
+  display: none;
+}
+
+.attachment-card--pending {
+  width: auto;
+  max-width: 220px;
+  cursor: default;
+  padding-right: 8px;
+}
+
+.attachment-card--pending:hover {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.attachment-card__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.attachment-card__remove:hover {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
 .attachment-preview__body {
   display: flex;
   align-items: center;
