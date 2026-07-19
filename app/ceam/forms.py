@@ -66,6 +66,14 @@ class ReponseForm(FlaskForm):
     attachments = MultipleFileField("Pièces jointes (PDF, images)")
 
 
+class MessageForm(FlaskForm):
+    """Message libre dans l'espace d'échanges du dossier — ouvert au
+    déclarant, aux tiers, et aux membres CEAM (contrairement à ReponseForm,
+    réservée à la commission pour les réponses officielles catégorisées)."""
+    content = TextAreaField("Message", validators=[DataRequired()])
+    attachments = MultipleFileField("Pièces jointes (PDF, images)")
+
+
 class ReglementForm(FlaskForm):
     """Édition du règlement CEAM (texte structuré en sections/articles),
     réservée aux administrateurs."""

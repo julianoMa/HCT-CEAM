@@ -59,7 +59,7 @@ class Rapport:
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, location, witness, description, proof,
                  send_date, owner_id, status, note, reponses=None, archived=False, status_history=None,
-                 proof_attachments=None, tiers_ids=None):
+                 proof_attachments=None, tiers_ids=None, messages_locked=False):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -94,6 +94,10 @@ class Rapport:
         # Tiers ajoutés par la commission : utilisateurs (autres que le
         # déclarant) autorisés à consulter ce dossier, en plus de la CEAM.
         self.tiers_ids = tiers_ids or []
+        # Si activé par la commission, bloque l'envoi de nouveaux messages
+        # par le déclarant et les tiers (ils gardent la lecture de tout
+        # l'historique) — la commission, elle, peut toujours écrire.
+        self.messages_locked = messages_locked
 
     # --- Confort d'affichage ---
     @property
@@ -129,8 +133,10 @@ class Rapport:
                 "content": r.get("content", ""),
                 "author_name": r.get("author_name", ""),
                 "author_rank": r.get("author_rank", ""),
+                "author_id": r.get("author_id"),
                 "sent_at_fr": sent_at_fr,
                 "attachments": r.get("attachments") or [],
+                "read_by": r.get("read_by") or [],
             })
         return affichage
 
@@ -200,6 +206,7 @@ class Rapport:
             "archived": self.archived,
             "status_history": self.status_history,
             "tiers_ids": self.tiers_ids,
+            "messages_locked": self.messages_locked,
         }
 
     @classmethod
@@ -214,6 +221,7 @@ class Rapport:
         data.setdefault("location", "")
         data.setdefault("proof_attachments", [])
         data.setdefault("tiers_ids", [])
+        data.setdefault("messages_locked", False)
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -472,9 +480,10 @@ class Rapport:
                 rapport_id=self.id,
             )
 
-    def add_reponse(self, type_, content, author_name, author_rank, attachments=None):
-        """Ajoute une réponse officielle à l'historique, la persiste, et
-        notifie le déclarant par MP Discord."""
+    def add_reponse(self, type_, content, author_name, author_rank, author_id=None, author_is_ceam=True, attachments=None):
+        """Ajoute un message à l'espace d'échanges du dossier (réponse
+        officielle CEAM, ou message libre d'un déclarant/tiers/membre CEAM),
+        le persiste, et notifie les autres participants autorisés."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
         from app.models.notification import Notification  # idem
 
@@ -484,29 +493,56 @@ class Rapport:
             "content": content,
             "author_name": author_name,
             "author_rank": author_rank,
+            "author_id": author_id,
             "sent_at": datetime.utcnow().isoformat(timespec="minutes"),
             "attachments": attachments or [],
+            # L'auteur a évidemment déjà "lu" son propre message.
+            "read_by": [author_id] if author_id is not None else [],
         }
         reponses = self.reponses + [reponse]
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
         self.reponses = reponses
-        self._notifier_nouvelle_reponse(reponse)
+        self._notifier_message(reponse, author_id, author_is_ceam)
         AuditLog.record(
             action=AuditLog.ACTION_REPONSE_ADD,
             actor_name=author_name,
-            details=f"{author_name} ({author_rank}) a envoyé une réponse « {type_} » sur le dossier {self.reference}",
+            details=f"{author_name} ({author_rank}) a envoyé un message « {type_} » sur le dossier {self.reference}",
         )
         # L'accusé de réception automatique est déjà couvert par la
         # notification "Rapport envoyé" créée à la création du dossier —
         # pas besoin de doublonner ici.
         if type_ != self.ACCUSE_RECEPTION_TYPE:
-            Notification.create(
-                user_id=self.owner_id,
-                type=Notification.TYPE_REPONSE_AJOUTEE,
-                message=f"La commission a ajouté une réponse ({type_}) à ton dossier {self.reference}.",
-                rapport_id=self.id,
-            )
+            destinataires = set()
+            if author_id != self.owner_id:
+                destinataires.add(self.owner_id)
+            destinataires.update(t for t in self.tiers_ids if t != author_id)
+            for user_id in destinataires:
+                Notification.create(
+                    user_id=user_id,
+                    type=Notification.TYPE_REPONSE_AJOUTEE,
+                    message=f"{author_name} a ajouté un message ({type_}) sur le dossier {self.reference}.",
+                    rapport_id=self.id,
+                )
         return reponse
+
+    def mark_messages_read(self, user_id):
+        """Marque tous les messages de l'espace d'échanges comme lus pour
+        cette personne (appelé à chaque consultation du dossier)."""
+        changed = False
+        reponses = []
+        for r in self.reponses:
+            read_by = r.get("read_by") or []
+            if user_id not in read_by:
+                read_by = read_by + [user_id]
+                changed = True
+            reponses.append({**r, "read_by": read_by})
+        if changed:
+            db = get_db()
+            db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
+            self.reponses = reponses
+
+    def unread_messages_count(self, user_id):
+        return sum(1 for r in self.reponses if user_id not in (r.get("read_by") or []))
 
     def _notifier_nouveau_rapport(self):
         """MP à tous les membres de la commission lors du dépôt d'un rapport."""
@@ -528,21 +564,31 @@ class Rapport:
         for membre in User.list_ceam_members():
             send_discord_dm(membre.discord_id, embed=embed)
 
-    def _notifier_nouvelle_reponse(self, reponse):
-        """MP au déclarant lors de l'ajout d'une réponse officielle."""
+    def _notifier_message(self, reponse, author_id, author_is_ceam):
+        """MP Discord aux autres participants autorisés lors de l'ajout
+        d'un message dans l'espace d'échanges. Si l'auteur est un membre
+        CEAM, notifie le déclarant et les tiers ; sinon (déclarant ou
+        tiers qui écrit), notifie toute la commission CEAM."""
         from app.models.user import User  # import différé : évite un cycle d'import
         from app.notifications import build_embed, send_discord_dm
 
-        owner = User.get(self.owner_id)
-        if owner is None:
-            return
         embed = build_embed(
             title=f"📬 Mise à jour de ton dossier {self.reference}",
-            description="La commission a ajouté une nouvelle réponse officielle à ton dossier.",
-            fields=[{"name": "Type de réponse", "value": reponse["type"], "inline": False}],
+            description=f"{reponse['author_name']} a ajouté un message dans les échanges du dossier.",
+            fields=[{"name": "Type", "value": reponse["type"], "inline": False}],
             url=self._detail_url(),
         )
-        send_discord_dm(owner.discord_id, embed=embed)
+
+        if author_is_ceam:
+            destinataires_ids = {self.owner_id, *self.tiers_ids} - {author_id}
+            for user_id in destinataires_ids:
+                user = User.get(user_id)
+                if user is not None:
+                    send_discord_dm(user.discord_id, embed=embed)
+        else:
+            for membre in User.list_ceam_members():
+                if membre.id != author_id:
+                    send_discord_dm(membre.discord_id, embed=embed)
 
     def _notifier_changement_statut(self, entry):
         """MP au déclarant lors d'un changement de statut."""
@@ -577,6 +623,15 @@ class Rapport:
         db = get_db()
         db.collection(COLLECTION).document(str(self.id)).update({"proof_attachments": attachments})
         self.proof_attachments = attachments
+
+    def set_messages_locked(self, locked):
+        """Active/désactive la possibilité pour le déclarant et les tiers
+        d'envoyer de nouveaux messages dans les échanges. La commission
+        peut toujours écrire, et tout le monde garde la lecture de
+        l'historique quel que soit l'état du verrou."""
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"messages_locked": locked})
+        self.messages_locked = locked
 
     def add_tiers(self, user_id):
         """Ajoute un utilisateur tiers, qui pourra désormais consulter ce

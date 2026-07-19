@@ -310,4 +310,42 @@
       });
     });
   });
+
+  // ── Onglets de la page de détail (Rapport / Échanges / Instruction CEAM) ──
+  const tabTriggers = document.querySelectorAll("[data-tab-trigger]");
+  const tabPanels = document.querySelectorAll("[data-tab-panel]");
+  if (tabTriggers.length && tabPanels.length) {
+    const activateTab = (name) => {
+      let matched = false;
+      tabPanels.forEach((panel) => {
+        const isMatch = panel.dataset.tabPanel === name;
+        panel.classList.toggle("is-active", isMatch);
+        if (isMatch) matched = true;
+      });
+      // Si l'onglet demandé n'existe pas (ex: lien vers #instruction pour
+      // quelqu'un qui n'a pas accès à cet onglet), on retombe sur "rapport".
+      if (!matched) {
+        tabPanels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.tabPanel === "rapport"));
+        name = "rapport";
+      }
+      tabTriggers.forEach((btn) => {
+        btn.classList.toggle("is-active", btn.dataset.tabTrigger === name);
+      });
+      if (name === "echanges") {
+        const chatArea = document.querySelector("[data-chat-scroll]");
+        if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+      }
+    };
+
+    tabTriggers.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const name = btn.dataset.tabTrigger;
+        history.replaceState(null, "", `#${name}`);
+        activateTab(name);
+      });
+    });
+
+    const initialTab = (window.location.hash || "").replace("#", "") || "rapport";
+    activateTab(initialTab);
+  }
 })();

@@ -20,7 +20,7 @@
       Ajouter un tiers
     </button>
     {% endif %}
-    
+
     <a href="{{ url_for('ceam.export_pdf', rapport_id=rapport.id) }}" class="btn-secondary btn-sm btn-header-action">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
       Exporter en PDF
@@ -36,194 +36,306 @@
 </div>
 {% endif %}
 
-{% if is_ceam_member %}
-<div class="card card--padded stepper-card" style="margin-bottom: 1rem;">
-  <div class="stepper-card__header">
-    <p class="prose-label" style="margin: 0;">Progression du dossier</p>
-    <p class="data-table__muted" style="margin: 0;">
-      Dernière mise à jour :
-      <strong>{{ rapport.status_history_affichage[-1].changed_at_fr if rapport.status_history_affichage else rapport.send_date_fr }}</strong>
-    </p>
-  </div>
-  <div class="stepper stepper--theme-{{ stepper_theme }}">
-    {% for value, label in status_steps %}
-    {% set is_cloture_reached = (value == status_cloture and rapport.status == status_cloture) %}
-    {% set step_state = "completed" if (value < rapport.status or is_cloture_reached) else ("current" if value == rapport.status else "upcoming") %}
-    {% set step_entry = (rapport.status_history_affichage | selectattr("status_value", "equalto", value) | list) | last %}
-    {% set display_label = "Réception" if value == status_nouveau else ("Décision rendue" if value == status_cloture else label) %}
-    <div class="stepper__step stepper__step--{{ step_state }}">
-      <div class="stepper__line"></div>
-      <div class="stepper__circle">
-        {% if step_state == "completed" %}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-        {% elif value in branch_statuses %}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-        {% else %}
-        <span>{{ loop.index }}</span>
-        {% endif %}
-      </div>
-      <div class="stepper__label">
-        <p class="stepper__label-title">{{ display_label }}</p>
-        {% if step_entry %}
-        <p class="stepper__label-meta">{{ step_entry.author_name }}</p>
-        <p class="stepper__label-meta">{{ step_entry.changed_at_fr }}</p>
-        {% endif %}
-      </div>
+<!-- ── Navigation par onglets ── -->
+<div class="tabs-nav" role="tablist">
+  <button type="button" class="tabs-nav__item" data-tab-trigger="rapport" role="tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6M9 9h1"/></svg>
+    Rapport
+  </button>
+  <button type="button" class="tabs-nav__item" data-tab-trigger="echanges" role="tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    Échanges
+    {% if unread_messages_count | default(0) %}
+    <span class="tabs-nav__badge">{{ unread_messages_count }}</span>
+    {% endif %}
+  </button>
+  {% if is_ceam_member %}
+  <button type="button" class="tabs-nav__item" data-tab-trigger="instruction" role="tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Instruction CEAM
+  </button>
+  {% endif %}
+</div>
+
+<!-- ══════════════════════ ONGLET 1 : RAPPORT ══════════════════════ -->
+<div class="tab-panel" data-tab-panel="rapport">
+
+  <div class="card card--padded stepper-card" style="margin-bottom: 1rem;">
+    <div class="stepper-card__header">
+      <p class="prose-label" style="margin: 0;">Progression du dossier</p>
+      <p class="data-table__muted" style="margin: 0;">
+        Dernière mise à jour :
+        <strong>{{ rapport.status_history_affichage[-1].changed_at_fr if rapport.status_history_affichage else rapport.send_date_fr }}</strong>
+      </p>
     </div>
-    {% endfor %}
+    <div class="stepper stepper--theme-{{ stepper_theme }}">
+      {% for value, label in status_steps %}
+      {% set is_cloture_reached = (value == status_cloture and rapport.status == status_cloture) %}
+      {% set step_state = "completed" if (value < rapport.status or is_cloture_reached) else ("current" if value == rapport.status else "upcoming") %}
+      {% set step_entry = (rapport.status_history_affichage | selectattr("status_value", "equalto", value) | list) | last %}
+      {% set display_label = "Réception" if value == status_nouveau else ("Décision rendue" if value == status_cloture else label) %}
+      <div class="stepper__step stepper__step--{{ step_state }}">
+        <div class="stepper__line"></div>
+        <div class="stepper__circle">
+          {% if step_state == "completed" %}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+          {% elif value in branch_statuses %}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          {% else %}
+          <span>{{ loop.index }}</span>
+          {% endif %}
+        </div>
+        <div class="stepper__label">
+          <p class="stepper__label-title">{{ display_label }}</p>
+          {% if step_entry %}
+          {% if is_ceam_member %}<p class="stepper__label-meta">{{ step_entry.author_name }}</p>{% endif %}
+          <p class="stepper__label-meta">{{ step_entry.changed_at_fr }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="info-card info-card--blue">
+      <p class="info-card__label">Plaignant</p>
+      <p class="info-card__name">{{ rapport.plaignant_first_name }} {{ rapport.plaignant_last_name }}</p>
+      <p class="info-card__meta">{{ rapport.plaignant_rank }} — {{ rapport.plaignant_affectation }}</p>
+    </div>
+    <div class="info-card info-card--red">
+      <p class="info-card__label">Mis en cause</p>
+      <p class="info-card__name">{{ rapport.concerne_first_name }} {{ rapport.concerne_last_name }}</p>
+      <p class="info-card__meta">{{ rapport.concerne_rank }} — {{ rapport.concerne_affectation }}</p>
+    </div>
+  </div>
+
+  <div class="card card--padded" style="margin-bottom: 1rem;">
+    <p class="prose-label">Événement</p>
+    <p class="info-card__meta" style="margin-bottom: 1rem;">
+      {{ rapport.event_date_fr }} à {{ rapport.event_hour }}
+      {% if rapport.location %}— {{ rapport.location }}{% endif %}
+    </p>
+    {% if rapport.witness %}
+    <p class="prose-label">Témoin(s)</p>
+    <div class="prose prose--clear"><p>{{ rapport.witness }}</p></div>
+    {% endif %}
+    <p class="prose-label" style="margin-top: 1rem;">Description</p>
+    <div class="prose prose--clear"><p>{{ rapport.description }}</p></div>
+    {% if rapport.proof %}
+    <p class="prose-label" style="margin-top: 1rem;">Preuve(s) — Lien(s)</p>
+    <div class="prose prose--clear rich-text">{{ rapport.proof | rich_text }}</div>
+    {% endif %}
+    {% if rapport.proof_attachments %}
+    <p class="prose-label" style="margin-top: 1rem;">Preuve(s) — Fichier(s)</p>
+    <div class="reponse-attachments">
+      {% for a in rapport.proof_attachments %}
+      <button
+        type="button"
+        class="attachment-card"
+        data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
+        data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
+        data-preview-name="{{ a.name }}"
+      >
+        <div class="attachment-card__icon">
+          {% if a.content_type == 'application/pdf' %}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+          {% else %}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          {% endif %}
+        </div>
+        <div class="attachment-card__info">
+          <span class="attachment-card__name">{{ a.name }}</span>
+          <span class="attachment-card__meta">
+            {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
+            {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
+          </span>
+        </div>
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="detail-meta">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Déposé le {{ rapport.send_date_fr }}
   </div>
 </div>
-{% endif %}
 
-<div class="card-grid">
-  <div class="info-card info-card--blue">
-    <p class="info-card__label">Plaignant</p>
-    <p class="info-card__name">{{ rapport.plaignant_first_name }} {{ rapport.plaignant_last_name }}</p>
-    <p class="info-card__meta">{{ rapport.plaignant_rank }} — {{ rapport.plaignant_affectation }}</p>
-  </div>
-  <div class="info-card info-card--red">
-    <p class="info-card__label">Mis en cause</p>
-    <p class="info-card__name">{{ rapport.concerne_first_name }} {{ rapport.concerne_last_name }}</p>
-    <p class="info-card__meta">{{ rapport.concerne_rank }} — {{ rapport.concerne_affectation }}</p>
-  </div>
-</div>
-
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label">Événement</p>
-  <p class="info-card__meta" style="margin-bottom: 1rem;">
-    {{ rapport.event_date_fr }} à {{ rapport.event_hour }}
-    {% if rapport.location %}— {{ rapport.location }}{% endif %}
-  </p>
-  {% if rapport.witness %}
-  <p class="prose-label">Témoin(s)</p>
-  <div class="prose prose--clear"><p>{{ rapport.witness }}</p></div>
-  {% endif %}
-  <p class="prose-label" style="margin-top: 1rem;">Description</p>
-  <div class="prose prose--clear"><p>{{ rapport.description }}</p></div>
-  {% if rapport.proof %}
-  <p class="prose-label" style="margin-top: 1rem;">Preuve(s) — Lien(s)</p>
-  <div class="prose prose--clear rich-text">{{ rapport.proof | rich_text }}</div>
-  {% endif %}
-  {% if rapport.proof_attachments %}
-  <p class="prose-label" style="margin-top: 1rem;">Preuve(s) — Fichier(s)</p>
-  <div class="reponse-attachments">
-    {% for a in rapport.proof_attachments %}
-    <button
-      type="button"
-      class="attachment-card"
-      data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
-      data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
-      data-preview-name="{{ a.name }}"
-    >
-      <div class="attachment-card__icon">
-        {% if a.content_type == 'application/pdf' %}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
-        {% else %}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-        {% endif %}
-      </div>
-      <div class="attachment-card__info">
-        <span class="attachment-card__name">{{ a.name }}</span>
-        <span class="attachment-card__meta">
-          {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
-          {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
-        </span>
-      </div>
-    </button>
-    {% endfor %}
-  </div>
-  {% endif %}
-</div>
-
-<!-- Réponses officielles à la commission : historique + envoi (séparé du suivi interne) -->
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label" style="margin-bottom: 1rem;">Réponses officielles de la commission</p>
-
-  {% if rapport.reponses_affichage %}
-  <div class="reponse-list">
-    {% for r in rapport.reponses_affichage | reverse %}
-    <div class="reponse-item">
-      <div class="reponse-item__header">
-        <span class="badge-type">{{ r.type_label }}</span>
-        <span class="reponse-item__meta">{{ r.author_name }} — {{ r.author_rank }} · {{ r.sent_at_fr }}</span>
-      </div>
-      <div class="prose prose--clear rich-text">{{ r.content | rich_text }}</div>
-      {% if r.attachments %}
-      <div class="reponse-attachments">
-        {% for a in r.attachments %}
-        <button
-          type="button"
-          class="attachment-card"
-          data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
-          data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
-          data-preview-name="{{ a.name }}"
-        >
-          <div class="attachment-card__icon">
-            {% if a.content_type == 'application/pdf' %}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
-            {% else %}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-            {% endif %}
-          </div>
-          <div class="attachment-card__info">
-            <span class="attachment-card__name">{{ a.name }}</span>
-            <span class="attachment-card__meta">
-              {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
-              {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
-            </span>
-          </div>
+<!-- ══════════════════════ ONGLET 2 : ÉCHANGES ══════════════════════ -->
+<div class="tab-panel" data-tab-panel="echanges">
+  <div class="chat-panel">
+    {% if is_ceam_member %}
+    <div class="chat-panel__lock-bar">
+      <span>Autoriser le déclarant et les tiers à envoyer des messages</span>
+      <form method="post" class="chat-lock-switch-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="toggle_lock">
+        <button type="submit" class="chat-lock-switch {{ 'is-off' if rapport.messages_locked }}" aria-pressed="{{ 'false' if rapport.messages_locked else 'true' }}">
+          <span class="chat-lock-switch__knob"></span>
         </button>
-        {% endfor %}
+      </form>
+    </div>
+    {% endif %}
+    <div class="chat-panel__messages" data-chat-scroll>
+      {% if rapport.reponses_affichage %}
+      {% set total_messages = rapport.reponses_affichage | length %}
+      {% for r in rapport.reponses_affichage %}
+      {% set is_mine = (r.author_id == current_user.id) %}
+      {% set is_new = (loop.index0 >= total_messages - (unread_messages_count | default(0))) and not is_mine %}
+      <div class="chat-message {{ 'chat-message--mine' if is_mine }}">
+        <div class="chat-message__bubble">
+          <div class="chat-message__header">
+            <span class="chat-message__author">{{ r.author_name }}</span>
+            <span class="chat-message__rank">{{ r.author_rank }}</span>
+            {% if r.type_label and r.type_label != "Message" %}<span class="badge-type">{{ r.type_label }}</span>{% endif %}
+            {% if is_new %}<span class="chat-message__new">Nouveau</span>{% endif %}
+          </div>
+          <div class="prose prose--clear rich-text">{{ r.content | rich_text }}</div>
+          {% if r.attachments %}
+          <div class="reponse-attachments">
+            {% for a in r.attachments %}
+            <button
+              type="button"
+              class="attachment-card"
+              data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
+              data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
+              data-preview-name="{{ a.name }}"
+            >
+              <div class="attachment-card__icon">
+                {% if a.content_type == 'application/pdf' %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                {% else %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                {% endif %}
+              </div>
+              <div class="attachment-card__info">
+                <span class="attachment-card__name">{{ a.name }}</span>
+                <span class="attachment-card__meta">
+                  {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
+                  {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
+                </span>
+              </div>
+            </button>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <span class="chat-message__time">{{ r.sent_at_fr }}</span>
+        </div>
       </div>
+      {% endfor %}
+      {% else %}
+      <p class="empty-state__text" style="margin: 0;">Aucun message pour le moment — commence la conversation ci-dessous.</p>
       {% endif %}
     </div>
-    {% endfor %}
+
+    {% if is_ceam_member or not rapport.messages_locked %}
+    <form method="post" enctype="multipart/form-data" class="chat-panel__composer">
+      {{ message_form.hidden_tag() }}
+      <input type="hidden" name="action" value="message">
+      {{ message_form.content(rows=2, placeholder="Écrire un message…") }}
+      <div class="chat-panel__composer-actions">
+        <label class="btn-ghost btn-sm chat-panel__attach-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          Joindre
+          {{ message_form.attachments(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp", **{"data-compress-images": "", "class": "chat-panel__attach-input"}) }}
+        </label>
+        {% if is_ceam_member %}
+        <button type="button" class="btn-secondary btn-sm" data-open-modal="reponse-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Réponse officielle
+        </button>
+        {% endif %}
+        <button type="submit" class="btn-primary btn-sm" style="margin-left: auto;">Envoyer</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="chat-panel__locked-notice">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      La commission a temporairement désactivé l'envoi de messages sur ce dossier. Tu peux toujours consulter l'historique ci-dessus.
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-  <p class="empty-state__text" style="margin: 0;">Aucune réponse envoyée pour le moment.</p>
-  {% endif %}
 </div>
 
-<!-- Suivi interne CEAM : statut + note, réservé à la commission -->
+<!-- ══════════════════════ ONGLET 3 : INSTRUCTION CEAM (réservé) ══════════════════════ -->
 {% if is_ceam_member %}
-<div class="internal-section-divider">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16" stroke-width="2.5"/></svg>
-  <span>Ce qui suit n'est visible que par la commission CEAM — le déclarant ne voit ni cette section, ni les notes internes.</span>
-</div>
-<form method="post" class="form-card" style="margin-bottom: 1rem;">
-  {{ instruction_form.hidden_tag() }}
-  <input type="hidden" name="action" value="instruction">
-  <div class="form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </span>
-      Suivi interne CEAM
-    </h2>
-    <div class="form-grid form-grid--single">
-      <div class="form-group">{{ instruction_form.status.label }}{{ instruction_form.status() }}</div>
-      <div class="form-group">{{ instruction_form.note.label }}{{ instruction_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
+<div class="tab-panel" data-tab-panel="instruction">
+  <div class="internal-section-divider">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16" stroke-width="2.5"/></svg>
+    <span>Cet onglet n'est visible que par la commission CEAM.</span>
+  </div>
+
+  <form method="post" class="form-card" style="margin-bottom: 1rem;">
+    {{ instruction_form.hidden_tag() }}
+    <input type="hidden" name="action" value="instruction">
+    <div class="form-section">
+      <h2 class="form-section__title">
+        <span class="form-section__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </span>
+        Suivi interne CEAM
+      </h2>
+      <div class="form-grid form-grid--single">
+        <div class="form-group">{{ instruction_form.status.label }}{{ instruction_form.status() }}</div>
+        <div class="form-group">{{ instruction_form.note.label }}{{ instruction_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit">Enregistrer le suivi interne</button>
+    </div>
+  </form>
+
+  <div class="card card--padded" style="margin-bottom: 1rem;">
+    <p class="prose-label" style="margin: 0 0 1rem;">Accès au dossier</p>
+    <div class="reponse-list">
+      {% if owner_user %}
+      <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span>{{ owner_user.name }} <span class="data-table__muted">(Déclarant)</span></span>
+      </div>
+      {% endif %}
+      {% for u in tiers_users %}
+      <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span>{{ u.name }} <span class="data-table__muted">(Tiers — {{ u.role_label }})</span></span>
+        <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-ghost btn-sm">Retirer</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="data-table__muted" style="margin: 1rem 0 0;">La commission CEAM (tous les membres) a également accès à ce dossier.</p>
+  </div>
+
+  {% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
+  {% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
+  {% if can_archive or can_delete %}
+  <div class="card card--padded">
+    <p class="prose-label">Administration du dossier</p>
+    <div class="detail-admin-actions">
+      {% if can_archive %}
+      <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}" data-archive-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="button" class="btn-secondary" data-confirm-archive data-reference="{{ rapport.reference }}">Archiver ce dossier</button>
+      </form>
+      {% endif %}
+      {% if can_delete %}
+      <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=rapport.id) }}" data-delete-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="button" class="btn-danger" data-confirm-delete data-reference="{{ rapport.reference }}">Supprimer définitivement</button>
+      </form>
+      {% endif %}
     </div>
   </div>
-  <div class="form-actions">
-    <button type="submit">Enregistrer le suivi interne</button>
-    <button type="button" class="btn-secondary" data-open-modal="reponse-modal">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-      Envoyer une réponse
-    </button>
-  </div>
-</form>
-{% else %}
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label">Statut du dossier</p>
-  <p style="margin: 0;">{{ status_badge(rapport.status, rapport.status_label) }}</p>
+  {% endif %}
 </div>
 {% endif %}
 
 {% if is_ceam_member %}
 <div class="modal-overlay" id="reponse-modal" aria-hidden="true">
   <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="reponse-modal-title">
-    <h2 id="reponse-modal-title" class="modal__title">Envoyer une nouvelle réponse</h2>
+    <h2 id="reponse-modal-title" class="modal__title">Envoyer une réponse officielle</h2>
     <form method="post" enctype="multipart/form-data">
       {{ reponse_form.hidden_tag() }}
       <input type="hidden" name="action" value="reponse">
@@ -244,29 +356,6 @@
       </div>
     </form>
   </div>
-</div>
-{% endif %}
-
-{% if is_ceam_member %}
-<div class="card card--padded" style="margin-bottom: 1rem;">
-  <p class="prose-label" style="margin: 0 0 1rem;">Accès au dossier</p>
-  <div class="reponse-list">
-    {% if owner_user %}
-    <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-      <span>{{ owner_user.name }} <span class="data-table__muted">(Déclarant)</span></span>
-    </div>
-    {% endif %}
-    {% for u in tiers_users %}
-    <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-      <span>{{ u.name }} <span class="data-table__muted">(Tiers — {{ u.role_label }})</span></span>
-      <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-ghost btn-sm">Retirer</button>
-      </form>
-    </div>
-    {% endfor %}
-  </div>
-  <p class="data-table__muted" style="margin: 1rem 0 0;">La commission CEAM (tous les membres) a également accès à ce dossier.</p>
 </div>
 
 <div class="modal-overlay" id="tiers-modal" aria-hidden="true">
@@ -291,33 +380,6 @@
   </div>
 </div>
 {% endif %}
-
-{% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
-{% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
-{% if can_archive or can_delete %}
-<div class="card card--padded" style="margin-top: 1rem;">
-  <p class="prose-label">Administration du dossier</p>
-  <div class="detail-admin-actions">
-    {% if can_archive %}
-    <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}" data-archive-form>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="button" class="btn-secondary" data-confirm-archive data-reference="{{ rapport.reference }}">Archiver ce dossier</button>
-    </form>
-    {% endif %}
-    {% if can_delete %}
-    <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=rapport.id) }}" data-delete-form>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="button" class="btn-danger" data-confirm-delete data-reference="{{ rapport.reference }}">Supprimer définitivement</button>
-    </form>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
-
-<div class="detail-meta">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-  Déposé le {{ rapport.send_date_fr }}
-</div>
 
 <div class="modal-overlay" id="attachment-preview-modal" aria-hidden="true">
   <div class="modal modal--xl" role="dialog" aria-modal="true" aria-labelledby="attachment-preview-title">

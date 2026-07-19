@@ -2,7 +2,7 @@ from flask import Blueprint, Response, abort, flash, redirect, render_template, 
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
-from app.ceam.forms import InstructionForm, RapportForm, ReglementForm, ReponseForm
+from app.ceam.forms import InstructionForm, MessageForm, RapportForm, ReglementForm, ReponseForm
 from app.models.audit_log import AuditLog
 from app.models.ceam import Rapport
 from app.models.notification import Notification
@@ -192,8 +192,20 @@ def detail(rapport_id):
     if (is_owner or is_tiers) and not is_ceam_member:
         Notification.mark_read_for_rapport(current_user.id, rapport_id)
 
+    # Les messages de l'espace d'échanges, en revanche, sont marqués lus
+    # pour QUICONQUE consulte le dossier (déclarant, tiers, ou membre
+    # CEAM) : tout le monde a besoin de son propre suivi lu/non-lu sur la
+    # conversation, contrairement aux notifications ci-dessus.
+    # Le compteur de messages non lus est calculé AVANT de les marquer
+    # comme lus juste après, pour que le badge de l'onglet Échanges
+    # reflète bien "combien de nouveaux messages depuis ta dernière
+    # visite" au moment où la page se charge.
+    unread_messages_count = rapport.unread_messages_count(current_user.id)
+    rapport.mark_messages_read(current_user.id)
+
     instruction_form = None
     reponse_form = None
+    message_form = MessageForm()
     tiers_users = [u for u in (User.get(uid) for uid in rapport.tiers_ids) if u is not None]
     owner_user = User.get(rapport.owner_id)
     available_users = None
@@ -201,12 +213,69 @@ def detail(rapport_id):
         excluded_ids = {rapport.owner_id, *rapport.tiers_ids}
         available_users = [u for u in User.list_all() if u.id not in excluded_ids]
 
+    action = request.form.get("action")
+
+    if action == "toggle_lock" and is_ceam_member:
+        rapport.set_messages_locked(not rapport.messages_locked)
+        AuditLog.record(
+            action=AuditLog.ACTION_MESSAGES_LOCK,
+            actor_name=current_user.name,
+            actor_id=current_user.id,
+            details=(
+                f"{current_user.name} a "
+                f"{'désactivé' if rapport.messages_locked else 'réactivé'} "
+                f"l'envoi de messages du déclarant sur le dossier {rapport.reference}"
+            ),
+        )
+        flash(
+            "Envoi de messages désactivé pour le déclarant." if rapport.messages_locked
+            else "Envoi de messages réactivé pour le déclarant.",
+            "success",
+        )
+        return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
+
+    if action == "message" and rapport.messages_locked and not is_ceam_member:
+        flash("La commission a désactivé l'envoi de messages sur ce dossier.", "danger")
+        return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
+
+    if action == "message" and message_form.validate_on_submit():
+        attachments = []
+        rejected = []
+        for uploaded in request.files.getlist("attachments"):
+            if not uploaded or not uploaded.filename:
+                continue
+            try:
+                meta = upload_reponse_attachment(rapport.id, uploaded)
+            except Exception:  # noqa: BLE001 - un souci Storage ne doit pas faire planter l'envoi
+                meta = None
+            if meta:
+                attachments.append(meta)
+            else:
+                rejected.append(uploaded.filename)
+
+        rapport.add_reponse(
+            type_="Message",
+            content=message_form.content.data,
+            author_name=current_user.name,
+            author_rank=current_user.role_label,
+            author_id=current_user.id,
+            author_is_ceam=is_ceam_member,
+            attachments=attachments,
+        )
+        if rejected:
+            flash(
+                "Message envoyé, mais certains fichiers ont été ignorés (type non "
+                "autorisé, PDF/image uniquement, 650 Ko max) : " + ", ".join(rejected),
+                "danger",
+            )
+        else:
+            flash("Message envoyé.", "success")
+        return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
+
     if is_ceam_member:
         instruction_form = InstructionForm(status=rapport.status, note=rapport.note)
         instruction_form.status.choices = list(Rapport.STATUS_LABELS.items())
         reponse_form = ReponseForm()
-
-        action = request.form.get("action")
 
         if action == "instruction" and instruction_form.validate_on_submit():
             can_close = current_user.role >= User.ROLE_PRESIDENT_CEAM
@@ -240,6 +309,8 @@ def detail(rapport_id):
                 content=reponse_form.content.data,
                 author_name=current_user.name,
                 author_rank=current_user.role_label,
+                author_id=current_user.id,
+                author_is_ceam=True,
                 attachments=attachments,
             )
             if rejected:
@@ -285,7 +356,11 @@ def detail(rapport_id):
         rapport=rapport,
         instruction_form=instruction_form,
         reponse_form=reponse_form,
+        message_form=message_form,
+        unread_messages_count=unread_messages_count,
         is_ceam_member=is_ceam_member,
+        is_owner=is_owner,
+        is_tiers=is_tiers,
         tiers_users=tiers_users,
         owner_user=owner_user,
         available_users=available_users,
