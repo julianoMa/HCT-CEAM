@@ -1619,8 +1619,8 @@ html {
 }
 
 .reglement-toc__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 1.25rem;
 }
 
@@ -1628,6 +1628,11 @@ html {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 14px 16px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  flex: 1 1 220px;
 }
 
 .reglement-toc__section-link {
@@ -1635,7 +1640,9 @@ html {
   font-weight: 700;
   color: var(--text);
   text-decoration: none;
-  margin-bottom: 2px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 
 .reglement-toc__section-link:hover {
