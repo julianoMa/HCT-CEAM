@@ -41,14 +41,14 @@
 {% endif %}
 
 {% if reglement.preambule %}
-<div class="card card--padded" style="margin-bottom: 1.25rem;">
+<div class="card card--padded" style="margin-bottom: 1.25rem;" data-reveal>
   <h2 class="card__title" style="margin: 0 0 1.25rem;">Préambule</h2>
   <div class="prose rich-text">{{ reglement.preambule | rich_text }}</div>
 </div>
 {% endif %}
 
 {% if reglement.sections %}
-<div class="card card--padded reglement-toc" style="margin-bottom: 1.25rem;">
+<div class="card card--padded reglement-toc" style="margin-bottom: 1.25rem;" data-reveal>
   <h2 class="card__title" style="margin: 0 0 1.25rem;">Sommaire</h2>
   <nav class="reglement-toc__list">
     {% for section in reglement.sections %}
@@ -67,7 +67,7 @@
 
 {% for section in reglement.sections %}
 {% set section_idx = loop.index %}
-<div class="card card--padded reglement-section" style="margin-bottom: 1.25rem;" id="reglement-section-{{ section_idx }}">
+<div class="card card--padded reglement-section" style="margin-bottom: 1.25rem;" id="reglement-section-{{ section_idx }}" data-reveal>
   {% if section.title %}<h2 class="card__title" style="margin: 0 0 1.25rem;">{{ section.title }}</h2>{% endif %}
   {% for article in section.articles %}
   {% if not loop.first %}<hr class="reglement-divider">{% endif %}

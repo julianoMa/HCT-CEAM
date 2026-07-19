@@ -2220,8 +2220,69 @@ button.is-submitting,
 .btn-primary.is-submitting,
 .btn-secondary.is-submitting,
 .btn-danger.is-submitting {
-  opacity: 0.6;
+  opacity: 0.75;
   cursor: not-allowed;
+  position: relative;
+  padding-left: 2.1em;
+}
+
+.btn-inline-spinner {
+  position: absolute;
+  left: 0.8em;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: currentColor;
+  animation: spin 0.7s linear infinite;
+}
+
+.btn-secondary .btn-inline-spinner,
+.btn-ghost .btn-inline-spinner {
+  border-color: var(--border);
+  border-top-color: var(--text);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Spinner autonome, réutilisable ailleurs (chargement de liste, etc.) */
+.spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Apparition au scroll (cards Règlement / Accueil) ── */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .spinner,
+  .btn-inline-spinner {
+    animation: none;
+  }
 }
 
 /* ── Onglets de la page de détail ── */

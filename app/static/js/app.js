@@ -349,6 +349,12 @@
         setTimeout(() => {
           btn.disabled = true;
           btn.classList.add("is-submitting");
+          if (!btn.querySelector(".btn-inline-spinner")) {
+            const spinner = document.createElement("span");
+            spinner.className = "btn-inline-spinner";
+            spinner.setAttribute("aria-hidden", "true");
+            btn.prepend(spinner);
+          }
         }, 0);
       });
     });
@@ -513,5 +519,39 @@
         // pour cette session, juste pas mémorisé pour la prochaine visite.
       }
     });
+  }
+
+  // ── Apparition au scroll ──
+  // Les éléments marqués data-reveal (cards du Règlement, de l'Accueil…)
+  // apparaissent en fondu + léger glissement dès qu'ils entrent dans le
+  // viewport, une seule fois (pas de réapparition en remontant). Si
+  // l'utilisateur préfère moins d'animations (prefers-reduced-motion),
+  // le CSS les affiche directement sans transition — on n'a rien de plus
+  // à faire ici dans ce cas.
+  const revealTargets = document.querySelectorAll("[data-reveal]");
+  if (revealTargets.length && "IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+    );
+    revealTargets.forEach((el, index) => {
+      // Léger effet de cascade pour les éléments d'une même grille
+      // (missions de l'accueil, sections du règlement) : chacun apparaît
+      // un peu après le précédent plutôt que tous d'un coup.
+      const group = el.closest("[data-reveal-group]");
+      const delayIndex = group ? Array.from(group.querySelectorAll("[data-reveal]")).indexOf(el) : 0;
+      el.style.transitionDelay = `${Math.min(delayIndex, 6) * 70}ms`;
+      revealObserver.observe(el);
+    });
+  } else {
+    // Navigateur sans IntersectionObserver (très rare) : afficher direct.
+    revealTargets.forEach((el) => el.classList.add("is-revealed"));
   }
 })();
