@@ -38,6 +38,20 @@ class Rapport:
 
     AFFECTATIONS = ["TMC", "NMH"]
 
+    # Classement final au moment de la clôture (obligatoire avant de
+    # pouvoir clôturer, sauf "Sans objet" qui est pré-proposé pour les
+    # dossiers déclarés non recevables).
+    CLASSEMENT_SANS_SUITE = "Classement sans suite"
+    CLASSEMENT_AVEC_SANCTION = "Classement avec sanction"
+    CLASSEMENT_SANS_SANCTION = "Classement sans sanction"
+    CLASSEMENT_SANS_OBJET = "Sans objet"
+    CLASSEMENTS = [
+        CLASSEMENT_SANS_SUITE,
+        CLASSEMENT_AVEC_SANCTION,
+        CLASSEMENT_SANS_SANCTION,
+        CLASSEMENT_SANS_OBJET,
+    ]
+
     # Nombre de jours au-delà duquel un dossier resté au statut "Nouveau"
     # déclenche une alerte de relance dans les statistiques.
     STALE_NOUVEAU_JOURS = 5
@@ -59,7 +73,8 @@ class Rapport:
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, location, witness, description, proof,
                  send_date, owner_id, status, note, reponses=None, archived=False, status_history=None,
-                 proof_attachments=None, tiers_ids=None, messages_locked=False):
+                 proof_attachments=None, tiers_ids=None, messages_locked=False,
+                 classement=None, decision_rendered=False):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -98,6 +113,14 @@ class Rapport:
         # par le déclarant et les tiers (ils gardent la lecture de tout
         # l'historique) — la commission, elle, peut toujours écrire.
         self.messages_locked = messages_locked
+        # Classement final, renseigné à la clôture (ou pré-proposé "Sans
+        # objet" pour un dossier non recevable).
+        self.classement = classement
+        # True dès que "Marquer la décision comme rendue" a été cliqué :
+        # bascule l'onglet Instruction CEAM vers l'écran de classement +
+        # clôture, sans changer le statut tant que la clôture n'est pas
+        # confirmée.
+        self.decision_rendered = decision_rendered
 
     # --- Confort d'affichage ---
     @property
@@ -153,6 +176,7 @@ class Rapport:
                 "author_name": h.get("author_name", ""),
                 "author_rank": h.get("author_rank", ""),
                 "changed_at_fr": changed_at_fr,
+                "motif": h.get("motif"),
             })
         return affichage
 
@@ -207,6 +231,8 @@ class Rapport:
             "status_history": self.status_history,
             "tiers_ids": self.tiers_ids,
             "messages_locked": self.messages_locked,
+            "classement": self.classement,
+            "decision_rendered": self.decision_rendered,
         }
 
     @classmethod
@@ -222,6 +248,8 @@ class Rapport:
         data.setdefault("proof_attachments", [])
         data.setdefault("tiers_ids", [])
         data.setdefault("messages_locked", False)
+        data.setdefault("classement", None)
+        data.setdefault("decision_rendered", False)
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -436,49 +464,119 @@ class Rapport:
             "weekly_chart": weekly_chart,
         }
 
-    def update_instruction(self, status, note, author_name, author_rank):
-        """Met à jour le suivi interne (statut + note), indépendant des
-        réponses officielles envoyées au plaignant. N'ajoute une entrée à
-        l'historique que si le statut change réellement (pas si seule la
-        note est modifiée)."""
+    def update_note(self, note):
+        """Met à jour la note interne privée (visible uniquement par la
+        commission), indépendamment de tout changement de statut."""
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"note": note})
+        self.note = note
+
+    def _change_status(self, new_status, author_name, author_rank, motif=None):
+        """Change le statut, ajoute l'entrée correspondante à l'historique
+        (avec motif éventuel, ex: suspension), notifie le déclarant, et
+        journalise l'action. Ne fait rien si le statut ne change pas
+        réellement (idempotent)."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
         from app.models.notification import Notification  # idem
 
+        if new_status == self.status:
+            return
         db = get_db()
-        updates = {"status": status, "note": note}
-        status_changed = status != self.status
         ancien_label = self.status_label
+        entry = {
+            "status": new_status,
+            "author_name": author_name,
+            "author_rank": author_rank,
+            "changed_at": datetime.utcnow().isoformat(timespec="minutes"),
+        }
+        if motif:
+            entry["motif"] = motif
+        new_history = self.status_history + [entry]
 
-        if status_changed:
-            entry = {
-                "status": status,
-                "author_name": author_name,
-                "author_rank": author_rank,
-                "changed_at": datetime.utcnow().isoformat(timespec="minutes"),
-            }
-            new_history = self.status_history + [entry]
-            updates["status_history"] = new_history
+        db.collection(COLLECTION).document(str(self.id)).update({
+            "status": new_status,
+            "status_history": new_history,
+        })
+        self.status = new_status
+        self.status_history = new_history
+        self._notifier_changement_statut(entry)
+        AuditLog.record(
+            action=AuditLog.ACTION_STATUS_CHANGE,
+            actor_name=author_name,
+            details=(
+                f"{author_name} ({author_rank}) a changé le statut du dossier "
+                f"{self.reference} : « {ancien_label} » → « {self.status_label} »"
+                + (f" (motif : {motif})" if motif else "")
+            ),
+        )
+        Notification.create(
+            user_id=self.owner_id,
+            type=Notification.TYPE_STATUT_CHANGE,
+            message=f"Le statut de ton dossier {self.reference} est passé à : {self.status_label}.",
+            rapport_id=self.id,
+        )
 
-        db.collection(COLLECTION).document(str(self.id)).update(updates)
-        self.status = status
-        self.note = note
-        if status_changed:
-            self.status_history = new_history
-            self._notifier_changement_statut(entry)
-            AuditLog.record(
-                action=AuditLog.ACTION_STATUS_CHANGE,
-                actor_name=author_name,
-                details=(
-                    f"{author_name} ({author_rank}) a changé le statut du dossier "
-                    f"{self.reference} : « {ancien_label} » → « {self.status_label} »"
-                ),
-            )
-            Notification.create(
-                user_id=self.owner_id,
-                type=Notification.TYPE_STATUT_CHANGE,
-                message=f"Le statut de ton dossier {self.reference} est passé à : {self.status_label}.",
-                rapport_id=self.id,
-            )
+    def set_classement(self, classement):
+        """Enregistre le classement final (ou pré-proposé), sans changer le
+        statut ni ajouter d'entrée d'historique."""
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"classement": classement})
+        self.classement = classement
+
+    def lancer_examen(self, author_name, author_rank):
+        """Étape 1 → 2 : lance officiellement l'examen préliminaire."""
+        self._change_status(self.STATUS_EN_EXAMEN, author_name, author_rank)
+
+    def instruire(self, author_name, author_rank):
+        """Étape 2 → 3 : l'examen préliminaire conclut à la nécessité
+        d'instruire le dossier."""
+        self._change_status(self.STATUS_EN_INSTRUCTION, author_name, author_rank)
+
+    def marquer_non_recevable(self, author_name, author_rank):
+        """Étape 2 (issue alternative) : le dossier est jugé non recevable.
+        Oriente automatiquement vers la clôture, classement pré-proposé
+        "Sans objet" (modifiable avant la confirmation finale)."""
+        self._change_status(self.STATUS_NON_RECEVABLE, author_name, author_rank)
+        if not self.classement:
+            self.set_classement(self.CLASSEMENT_SANS_OBJET)
+
+    def suspendre(self, author_name, author_rank, motif):
+        """Étape 3 (pause) : suspend temporairement le traitement, avec un
+        motif obligatoire (vérifié côté formulaire/route)."""
+        self._change_status(self.STATUS_TRAITEMENT_SUSPENDU, author_name, author_rank, motif=motif)
+
+    def reprendre_instruction(self, author_name, author_rank):
+        """Depuis une suspension : reprend l'instruction normalement."""
+        db = get_db()
+        self._change_status(self.STATUS_EN_INSTRUCTION, author_name, author_rank)
+        db.collection(COLLECTION).document(str(self.id)).update({"decision_rendered": False})
+        self.decision_rendered = False
+
+    def marquer_decision_rendue(self, author_name, author_rank):
+        """Étape 3 → 4 : l'instruction est terminée, une décision a été
+        prise. Ne clôture pas encore le dossier — fait juste apparaître
+        l'espace de classement + clôture. Disponible aussi depuis une
+        suspension (auquel cas le statut revient d'abord à "En cours
+        d'instruction")."""
+        from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+
+        if self.status == self.STATUS_TRAITEMENT_SUSPENDU:
+            self._change_status(self.STATUS_EN_INSTRUCTION, author_name, author_rank)
+        db = get_db()
+        db.collection(COLLECTION).document(str(self.id)).update({"decision_rendered": True})
+        self.decision_rendered = True
+        AuditLog.record(
+            action=AuditLog.ACTION_STATUS_CHANGE,
+            actor_name=author_name,
+            details=f"{author_name} ({author_rank}) a marqué la décision comme rendue sur le dossier {self.reference}",
+        )
+
+    def cloturer(self, author_name, author_rank, classement):
+        """Étape finale : clôture définitivement le dossier. Verrouille
+        automatiquement les échanges (voir set_messages_locked)."""
+        self.set_classement(classement)
+        self._change_status(self.STATUS_CLOTURE, author_name, author_rank)
+        self.set_messages_locked(True)
 
     def add_reponse(self, type_, content, author_name, author_rank, author_id=None, author_is_ceam=True, attachments=None):
         """Ajoute un message à l'espace d'échanges du dossier (réponse

@@ -48,11 +48,28 @@ class RapportForm(FlaskForm):
     )
 
 
-class InstructionForm(FlaskForm):
-    """Suivi interne du dossier (statut + note), réservé à la commission.
-    Ne contient plus de champ de réponse : voir ReponseForm."""
-    status = SelectField("Statut", coerce=int)
+class NoteForm(FlaskForm):
+    """Note interne privée du dossier, réservée à la commission —
+    indépendante de tout changement de statut (voir les formulaires
+    procéduraux ci-dessous pour ça)."""
     note = TextAreaField("Note interne", validators=[Optional()])
+
+
+class SuspensionForm(FlaskForm):
+    """Suspension du traitement : le motif est obligatoire."""
+    motif = TextAreaField(
+        "Motif de la suspension",
+        validators=[DataRequired(message="Un motif est obligatoire pour suspendre le traitement.")],
+    )
+
+
+class ClotureForm(FlaskForm):
+    """Classement + clôture finale du dossier."""
+    classement = SelectField(
+        "Classement",
+        choices=[(c, c) for c in Rapport.CLASSEMENTS],
+        validators=[DataRequired(message="Un classement doit être sélectionné avant de clôturer.")],
+    )
 
 
 class ReponseForm(FlaskForm):

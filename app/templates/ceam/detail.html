@@ -268,22 +268,21 @@
   </div>
 
   <form method="post" class="form-card" style="margin-bottom: 1rem;">
-    {{ instruction_form.hidden_tag() }}
-    <input type="hidden" name="action" value="instruction">
+    {{ note_form.hidden_tag() }}
+    <input type="hidden" name="action" value="note">
     <div class="form-section">
       <h2 class="form-section__title">
         <span class="form-section__icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </span>
-        Suivi interne CEAM
+        Note interne CEAM
       </h2>
       <div class="form-grid form-grid--single">
-        <div class="form-group">{{ instruction_form.status.label }}{{ instruction_form.status() }}</div>
-        <div class="form-group">{{ instruction_form.note.label }}{{ instruction_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
+        <div class="form-group">{{ note_form.note.label }}{{ note_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
       </div>
     </div>
     <div class="form-actions">
-      <button type="submit">Enregistrer le suivi interne</button>
+      <button type="submit">Enregistrer la note</button>
     </div>
   </form>
 
@@ -329,6 +328,101 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- ── Traitement procédural : les actions varient selon le statut ── -->
+  <div class="card card--padded procedure-panel" style="margin-top: 1rem;">
+    <p class="prose-label" style="margin: 0 0 1rem;">Traitement procédural</p>
+
+    {% if rapport.status == status_nouveau %}
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="lancer_examen">
+      <button type="submit" class="btn-primary procedure-btn--wide">Traiter l'examen préliminaire</button>
+    </form>
+
+    {% elif rapport.status == status_en_examen %}
+    <div class="procedure-actions">
+      <form method="post" class="procedure-actions__form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="instruire">
+        <button type="submit" class="btn-primary procedure-btn">Instruire le dossier</button>
+      </form>
+      <form method="post" class="procedure-actions__form" data-non-recevable-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="non_recevable">
+        <button type="button" class="btn-secondary procedure-btn" data-confirm-non-recevable data-reference="{{ rapport.reference }}">Dossier non recevable</button>
+      </form>
+    </div>
+
+    {% elif rapport.status == status_en_instruction and not rapport.decision_rendered %}
+    <div class="procedure-actions">
+      <form method="post" class="procedure-actions__form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="marquer_decision_rendue">
+        <button type="submit" class="btn-primary procedure-btn">Marquer la décision comme rendue</button>
+      </form>
+      <button type="button" class="btn-secondary procedure-btn" data-open-modal="suspension-modal">Suspendre le traitement</button>
+    </div>
+
+    {% elif rapport.status == status_suspendu %}
+    <div class="procedure-actions">
+      <form method="post" class="procedure-actions__form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="reprendre_instruction">
+        <button type="submit" class="btn-primary procedure-btn">Reprendre l'instruction</button>
+      </form>
+      <form method="post" class="procedure-actions__form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="marquer_decision_rendue">
+        <button type="submit" class="btn-secondary procedure-btn">Marquer la décision comme rendue</button>
+      </form>
+    </div>
+
+    {% elif (rapport.status == status_en_instruction and rapport.decision_rendered) or rapport.status == status_non_recevable %}
+    <div class="procedure-closure">
+      <p class="procedure-closure__title">Décision et classement du dossier</p>
+      <form method="post" data-cloture-form>
+        {{ cloture_form.hidden_tag() }}
+        <input type="hidden" name="action" value="cloturer">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          {{ cloture_form.classement.label }}
+          {{ cloture_form.classement(id="cloture-classement-select") }}
+        </div>
+        {% if can_close %}
+        <button type="button" class="btn-danger procedure-btn--wide" id="cloture-submit-btn" data-confirm-cloture data-reference="{{ rapport.reference }}" {{ "disabled" if not cloture_form.classement.data }}>
+          Clôturer le dossier
+        </button>
+        {% else %}
+        <p class="data-table__muted" style="margin: 0;">Seul le président CEAM peut clôturer un dossier.</p>
+        {% endif %}
+      </form>
+    </div>
+
+    {% elif rapport.status == status_cloture %}
+    <p class="empty-state__text" style="margin: 0;">
+      Dossier clôturé{% if rapport.classement %} — {{ rapport.classement }}{% endif %}.
+      Les échanges sont verrouillés et le dossier est en lecture seule.
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="modal-overlay" id="suspension-modal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="suspension-modal-title">
+      <h2 id="suspension-modal-title" class="modal__title">Suspendre le traitement</h2>
+      <form method="post">
+        {{ suspension_form.hidden_tag() }}
+        <input type="hidden" name="action" value="suspendre">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          {{ suspension_form.motif.label }}
+          {{ suspension_form.motif(rows=4, placeholder="Ex: en attente d'une pièce complémentaire, d'une audition…") }}
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+          <button type="submit">Suspendre</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endif %}
 

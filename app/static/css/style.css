@@ -2451,3 +2451,38 @@ button.is-submitting,
 .chat-panel__locked-notice svg {
   flex-shrink: 0;
 }
+
+/* ── Traitement procédural (onglet Instruction CEAM) ── */
+
+.procedure-panel {
+  border: 1px dashed var(--accent);
+}
+
+.procedure-btn--wide {
+  width: 100%;
+  padding: 16px;
+  font-size: 15px;
+}
+
+.procedure-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.procedure-actions__form {
+  flex: 1 1 220px;
+  display: flex;
+}
+
+.procedure-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 14px;
+}
+
+.procedure-closure__title {
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: var(--text);
+}

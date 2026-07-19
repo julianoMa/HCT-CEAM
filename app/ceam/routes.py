@@ -2,7 +2,7 @@ from flask import Blueprint, Response, abort, flash, redirect, render_template, 
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
-from app.ceam.forms import InstructionForm, MessageForm, RapportForm, ReglementForm, ReponseForm
+from app.ceam.forms import ClotureForm, MessageForm, NoteForm, RapportForm, ReglementForm, ReponseForm, SuspensionForm
 from app.models.audit_log import AuditLog
 from app.models.ceam import Rapport
 from app.models.notification import Notification
@@ -203,9 +203,11 @@ def detail(rapport_id):
     unread_messages_count = rapport.unread_messages_count(current_user.id)
     rapport.mark_messages_read(current_user.id)
 
-    instruction_form = None
     reponse_form = None
     message_form = MessageForm()
+    note_form = None
+    suspension_form = None
+    cloture_form = None
     tiers_users = [u for u in (User.get(uid) for uid in rapport.tiers_ids) if u is not None]
     owner_user = User.get(rapport.owner_id)
     available_users = None
@@ -272,22 +274,59 @@ def detail(rapport_id):
             flash("Message envoyé.", "success")
         return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
 
-    if is_ceam_member:
-        instruction_form = InstructionForm(status=rapport.status, note=rapport.note)
-        instruction_form.status.choices = list(Rapport.STATUS_LABELS.items())
-        reponse_form = ReponseForm()
+    note_form = None
+    suspension_form = None
+    cloture_form = None
 
-        if action == "instruction" and instruction_form.validate_on_submit():
-            can_close = current_user.role >= User.ROLE_PRESIDENT_CEAM
-            if instruction_form.status.data == Rapport.STATUS_CLOTURE and not can_close:
+    if is_ceam_member:
+        note_form = NoteForm(note=rapport.note)
+        suspension_form = SuspensionForm()
+        cloture_form = ClotureForm(classement=rapport.classement)
+        reponse_form = ReponseForm()
+        can_close = current_user.role >= User.ROLE_PRESIDENT_CEAM
+
+        if action == "note" and note_form.validate_on_submit():
+            rapport.update_note(note_form.note.data)
+            flash("Note interne mise à jour.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "lancer_examen":
+            rapport.lancer_examen(current_user.name, current_user.role_label)
+            flash("Examen préliminaire lancé.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "instruire":
+            rapport.instruire(current_user.name, current_user.role_label)
+            flash("Le dossier est maintenant en cours d'instruction.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "non_recevable":
+            rapport.marquer_non_recevable(current_user.name, current_user.role_label)
+            flash("Dossier marqué non recevable. Un classement a été pré-proposé.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "suspendre" and suspension_form.validate_on_submit():
+            rapport.suspendre(current_user.name, current_user.role_label, suspension_form.motif.data)
+            flash("Traitement suspendu.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "reprendre_instruction":
+            rapport.reprendre_instruction(current_user.name, current_user.role_label)
+            flash("Instruction reprise.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "marquer_decision_rendue":
+            rapport.marquer_decision_rendue(current_user.name, current_user.role_label)
+            flash("Décision marquée comme rendue. Sélectionne un classement pour clôturer.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
+
+        if action == "cloturer" and cloture_form.validate_on_submit():
+            if not can_close:
                 flash("Seul le président CEAM peut clôturer un dossier.", "danger")
             else:
-                rapport.update_instruction(
-                    instruction_form.status.data, instruction_form.note.data,
-                    current_user.name, current_user.role_label,
-                )
-                flash("Suivi interne mis à jour.", "success")
-            return redirect(url_for("ceam.detail", rapport_id=rapport.id))
+                rapport.cloturer(current_user.name, current_user.role_label, cloture_form.classement.data)
+                flash("Dossier clôturé. Les échanges sont désormais verrouillés.", "success")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
 
         if action == "reponse" and reponse_form.validate_on_submit():
             attachments = []
@@ -354,7 +393,9 @@ def detail(rapport_id):
     return render_template(
         "ceam/detail.html",
         rapport=rapport,
-        instruction_form=instruction_form,
+        note_form=note_form,
+        suspension_form=suspension_form,
+        cloture_form=cloture_form,
         reponse_form=reponse_form,
         message_form=message_form,
         unread_messages_count=unread_messages_count,
@@ -369,6 +410,11 @@ def detail(rapport_id):
         stepper_theme=stepper_theme,
         status_nouveau=Rapport.STATUS_NOUVEAU,
         status_cloture=Rapport.STATUS_CLOTURE,
+        status_en_examen=Rapport.STATUS_EN_EXAMEN,
+        status_en_instruction=Rapport.STATUS_EN_INSTRUCTION,
+        status_suspendu=Rapport.STATUS_TRAITEMENT_SUSPENDU,
+        status_non_recevable=Rapport.STATUS_NON_RECEVABLE,
+        can_close=current_user.role >= User.ROLE_PRESIDENT_CEAM,
     )
 
 
