@@ -110,19 +110,27 @@ class User(UserMixin):
     @classmethod
     def get_by_discord_id(cls, discord_id):
         db = get_db()
-        query = db.collection(COLLECTION).where(filter=FieldFilter("discord_id", "==", int(discord_id))).limit(1)
-        docs = list(query.stream())
-        return cls._from_doc(docs[0]) if docs else None
+        doc = db.collection(COLLECTION).document(str(int(discord_id))).get()
+        return cls._from_doc(doc) if doc.exists else None
 
     @classmethod
     def create(cls, discord_id, name, role=ROLE_DECLARANT, avatar_url=None, affectation=None, rank=None):
         db = get_db()
-        new_id = next_id(db, COLLECTION)
+        doc_id = str(int(discord_id))
+
+        if db.collection(COLLECTION).document(doc_id).get().exists:
+            raise ValueError(f"Un utilisateur avec le Discord ID {discord_id} existe déjà.")
+    
         user = cls(
-            id=new_id, discord_id=int(discord_id), name=name, role=role,
-            avatar_url=avatar_url, affectation=affectation, rank=rank,
+            id=int(doc_id),  # Conservé en int pour la compatibilité avec get_id() et les sessions
+            discord_id=int(discord_id),
+            name=name,
+            role=role,
+            avatar_url=avatar_url,
+            affectation=affectation,
+            rank=rank,
         )
-        db.collection(COLLECTION).document(str(new_id)).set(user.to_dict())
+        db.collection(COLLECTION).document(doc_id).set(user.to_dict())
         return user
 
     @classmethod
