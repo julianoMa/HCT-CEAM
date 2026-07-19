@@ -89,6 +89,49 @@
     });
   });
 
+  document.querySelectorAll("[data-confirm-non-recevable]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const reference = btn.dataset.reference || "ce dossier";
+      openConfirmModal({
+        form: btn.closest("form[data-non-recevable-form]"),
+        title: "Marquer le dossier comme non recevable ?",
+        text:
+          `Le dossier ${reference} sera orienté vers une clôture sans instruction complète ` +
+          '(classement "Sans objet" proposé par défaut). Continuer ?',
+        confirmLabel: "Confirmer",
+        danger: false,
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-cloture]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const reference = btn.dataset.reference || "ce dossier";
+      openConfirmModal({
+        form: btn.closest("form[data-cloture-form]"),
+        title: "Clôturer définitivement ce dossier ?",
+        text:
+          `Cette action verrouillera tous les échanges du dossier ${reference} et le passera ` +
+          "en lecture seule. Cette action est définitive. Continuer ?",
+        confirmLabel: "Clôturer le dossier",
+        danger: true,
+      });
+    });
+  });
+
+  // Le bouton "Clôturer le dossier" reste désactivé tant qu'aucun
+  // classement n'est sélectionné (le rendu serveur ne gère que l'état
+  // initial ; ceci couvre un changement de sélection sans rechargement).
+  const clotureSelect = document.getElementById("cloture-classement-select");
+  const clotureSubmitBtn = document.getElementById("cloture-submit-btn");
+  if (clotureSelect && clotureSubmitBtn) {
+    const syncClotureButton = () => {
+      clotureSubmitBtn.disabled = !clotureSelect.value;
+    };
+    clotureSelect.addEventListener("change", syncClotureButton);
+    syncClotureButton(); // état correct dès le chargement, pas seulement après un changement
+  }
+
   cancelBtn?.addEventListener("click", closeConfirmModal);
 
   confirmModal?.addEventListener("click", (event) => {

@@ -67,7 +67,7 @@ class ClotureForm(FlaskForm):
     """Classement + clôture finale du dossier."""
     classement = SelectField(
         "Classement",
-        choices=[(c, c) for c in Rapport.CLASSEMENTS],
+        choices=[("", "Choisir un classement…")] + [(c, c) for c in Rapport.CLASSEMENTS],
         validators=[DataRequired(message="Un classement doit être sélectionné avant de clôturer.")],
     )
 
