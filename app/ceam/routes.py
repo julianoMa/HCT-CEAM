@@ -385,6 +385,8 @@ def detail(rapport_id):
         stepper_theme = "blue"
     elif rapport.status in branch_statuses:
         stepper_theme = "red"
+    elif rapport.status == Rapport.STATUS_DECISION_RENDUE:
+        stepper_theme = "blue"
     elif rapport.status == Rapport.STATUS_CLOTURE:
         stepper_theme = "green"
     else:
