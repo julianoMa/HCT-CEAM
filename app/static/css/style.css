@@ -9,6 +9,8 @@
   --sidebar-text-active: #0f172a;
   --sidebar-accent: #d99e46;
   --sidebar-w: 272px;
+  --sidebar-w-collapsed: 76px;
+  --active-sidebar-w: var(--sidebar-w);
 
   --bg: #e7ebf3;
   --bg-accent: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(244, 182, 93, 0.16), transparent);
@@ -145,7 +147,7 @@ a:hover { color: var(--accent-hover); }
   top: 0;
   left: 0;
   z-index: 50;
-  width: var(--sidebar-w);
+  width: var(--active-sidebar-w);
   height: 100vh;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
@@ -153,7 +155,7 @@ a:hover { color: var(--accent-hover); }
   display: flex;
   flex-direction: column;
   padding: 1.25rem 1rem;
-  transition: transform var(--transition);
+  transition: width var(--transition), transform var(--transition);
 }
 
 .sidebar__brand {
@@ -365,10 +367,11 @@ a:hover { color: var(--accent-hover); }
 
 .main {
   flex: 1;
-  margin-left: var(--sidebar-w);
+  margin-left: var(--active-sidebar-w);
   min-width: 0;
   display: flex;
   flex-direction: column;
+  transition: margin-left var(--transition);
 }
 
 .topbar {
@@ -2620,4 +2623,76 @@ button.is-submitting,
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* ── Sidebar réductible ── */
+
+.sidebar__collapse-toggle {
+  position: absolute;
+  top: 22px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--sidebar-border);
+  background: var(--surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 51;
+  transition: all var(--transition);
+}
+
+.sidebar__collapse-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.sidebar__collapse-toggle svg {
+  transition: transform var(--transition);
+}
+
+/* Le bouton n'a de sens que sur desktop : la sidebar mobile est déjà
+   gérée par le pattern hors-écran (hamburger + overlay), pas par ce
+   mécanisme de repli en icônes. */
+@media (max-width: 768px) {
+  .sidebar__collapse-toggle {
+    display: none;
+  }
+}
+
+[data-sidebar-collapsed="true"] {
+  --active-sidebar-w: var(--sidebar-w-collapsed);
+}
+
+[data-sidebar-collapsed="true"] .sidebar__collapse-toggle svg {
+  transform: rotate(180deg);
+}
+
+[data-sidebar-collapsed="true"] .sidebar__brand {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-sidebar-collapsed="true"] .sidebar__brand-text,
+[data-sidebar-collapsed="true"] .sidebar__link-text,
+[data-sidebar-collapsed="true"] .sidebar__section-label,
+[data-sidebar-collapsed="true"] .sidebar__badge,
+[data-sidebar-collapsed="true"] .sidebar__user-info {
+  display: none;
+}
+
+[data-sidebar-collapsed="true"] .sidebar__link {
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+[data-sidebar-collapsed="true"] .sidebar__user-card {
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
 }

@@ -493,4 +493,25 @@
     // À l'envoi du formulaire, le brouillon local n'a plus lieu d'être.
     depotForm.addEventListener("submit", clearDraft);
   }
+
+  // ── Sidebar réductible ──
+  const sidebarToggle = document.getElementById("sidebar-collapse-toggle");
+  if (sidebarToggle) {
+    const COLLAPSE_KEY = "ceam-sidebar-collapsed";
+    sidebarToggle.addEventListener("click", () => {
+      const isCollapsed = document.documentElement.getAttribute("data-sidebar-collapsed") === "true";
+      const next = !isCollapsed;
+      if (next) {
+        document.documentElement.setAttribute("data-sidebar-collapsed", "true");
+      } else {
+        document.documentElement.removeAttribute("data-sidebar-collapsed");
+      }
+      try {
+        localStorage.setItem(COLLAPSE_KEY, String(next));
+      } catch (e) {
+        // stockage indisponible (navigation privée) : l'état reste actif
+        // pour cette session, juste pas mémorisé pour la prochaine visite.
+      }
+    });
+  }
 })();
