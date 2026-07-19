@@ -415,6 +415,12 @@ a:hover { color: var(--accent-hover); }
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
+  animation: page-fade-in 0.35s ease;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Auth layout (non connecté) ── */
@@ -653,6 +659,12 @@ a:hover { color: var(--accent-hover); }
   border-radius: var(--radius);
   padding: 1.25rem 1.5rem;
   box-shadow: var(--shadow-sm);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
 .info-card--blue {
@@ -1316,6 +1328,7 @@ button svg, .btn svg, .btn-primary svg, .btn-secondary svg, .btn-danger svg, .bt
 .attachment-card:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
+  transform: translateY(-1px);
 }
 
 .attachment-card__icon {
@@ -1546,7 +1559,7 @@ body.sidebar-open {
 /* ── Modal de confirmation ── */
 
 .modal-overlay {
-  display: none;
+  display: flex;
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
@@ -1555,10 +1568,17 @@ body.sidebar-open {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0s linear 0.18s;
 }
 
 .modal-overlay.is-visible {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.18s ease, visibility 0s linear 0s;
 }
 
 .modal {
@@ -1568,6 +1588,12 @@ body.sidebar-open {
   max-width: 420px;
   width: 100%;
   box-shadow: var(--shadow-lg);
+  transform: scale(0.96) translateY(8px);
+  transition: transform 0.18s ease;
+}
+
+.modal-overlay.is-visible .modal {
+  transform: scale(1) translateY(0);
 }
 
 .modal--wide {
@@ -1657,6 +1683,12 @@ html {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   flex: 1 1 220px;
+  transition: transform var(--transition), border-color var(--transition);
+}
+
+.reglement-toc__section:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
 }
 
 .reglement-toc__section-link {
@@ -1861,6 +1893,13 @@ html {
   padding: 1rem;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.ceam-grid__item:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .ceam-grid__icon {
@@ -2283,6 +2322,18 @@ button.is-submitting,
   .btn-inline-spinner {
     animation: none;
   }
+  .modal,
+  .modal-overlay,
+  .card,
+  .info-card,
+  .ceam-grid__item,
+  .reglement-toc__section,
+  .attachment-card,
+  .main__content {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* ── Onglets de la page de détail ── */
@@ -2601,6 +2652,7 @@ button.is-submitting,
   border-color: var(--border);
   background: var(--surface);
   box-shadow: none;
+  transform: none;
 }
 
 .attachment-card__remove {
@@ -2754,6 +2806,10 @@ button.is-submitting,
 
 [data-sidebar-collapsed="true"] .sidebar__user-card {
   justify-content: center;
-  padding-left: 8px;
-  padding-right: 8px;
+  padding: 10px 4px;
+}
+
+[data-sidebar-collapsed="true"] .sidebar__theme-toggle,
+[data-sidebar-collapsed="true"] .sidebar__logout {
+  display: none;
 }
