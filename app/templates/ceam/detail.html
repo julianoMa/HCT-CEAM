@@ -257,80 +257,8 @@
     <span>Cet onglet n'est visible que par la commission CEAM.</span>
   </div>
 
-  <form method="post" class="form-card" style="margin-bottom: 1rem;">
-    {{ note_form.hidden_tag() }}
-    <input type="hidden" name="action" value="note">
-    <div class="form-section">
-      <h2 class="form-section__title">
-        <span class="form-section__icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </span>
-        Note interne CEAM
-      </h2>
-      <div class="form-grid form-grid--single">
-        <div class="form-group">{{ note_form.note.label }}{{ note_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
-      </div>
-    </div>
-    <div class="form-actions">
-      <button type="submit">Enregistrer la note</button>
-    </div>
-  </form>
-
-  <div class="card card--padded" style="margin-bottom: 1rem;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-      <p class="prose-label" style="margin: 0;">Accès au dossier</p>
-      <button type="button" class="btn-secondary btn-sm" data-open-modal="tiers-modal">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M19 8v6M22 11h-6"/>
-        </svg>
-        Ajouter un tiers
-      </button>
-    </div>
-    <div class="reponse-list">
-      {% if owner_user %}
-      <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-        <span>{{ owner_user.name }} <span class="data-table__muted">(Déclarant)</span></span>
-      </div>
-      {% endif %}
-      {% for u in tiers_users %}
-      <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-        <span>{{ u.name }} <span class="data-table__muted">(Tiers — {{ u.role_label }})</span></span>
-        <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn-ghost btn-sm">Retirer</button>
-        </form>
-      </div>
-      {% endfor %}
-    </div>
-    <p class="data-table__muted" style="margin: 1rem 0 0;">La commission CEAM (tous les membres) a également accès à ce dossier.</p>
-  </div>
-
-  {% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
-  {% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
-  {% if can_archive or can_delete %}
-  <div class="card card--padded">
-    <p class="prose-label">Administration du dossier</p>
-    <div class="detail-admin-actions">
-      {% if can_archive %}
-      <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}" data-archive-form>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="button" class="btn-secondary" data-confirm-archive data-reference="{{ rapport.reference }}">Archiver ce dossier</button>
-      </form>
-      {% endif %}
-      {% if can_delete %}
-      <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=rapport.id) }}" data-delete-form>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="button" class="btn-danger" data-confirm-delete data-reference="{{ rapport.reference }}">Supprimer définitivement</button>
-      </form>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
   <!-- ── Traitement procédural : les actions varient selon le statut ── -->
-  <div class="card card--padded procedure-panel" style="margin-top: 1rem;">
+  <div class="card card--padded procedure-panel" style="margin-bottom: 1rem;">
     <p class="prose-label" style="margin: 0 0 1rem;">Traitement procédural</p>
 
     {% if rapport.status == status_nouveau %}
@@ -405,6 +333,79 @@
     </p>
     {% endif %}
   </div>
+
+
+  <form method="post" class="form-card" style="margin-bottom: 1rem;">
+    {{ note_form.hidden_tag() }}
+    <input type="hidden" name="action" value="note">
+    <div class="form-section">
+      <h2 class="form-section__title">
+        <span class="form-section__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </span>
+        Note interne CEAM
+      </h2>
+      <div class="form-grid form-grid--single">
+        <div class="form-group">{{ note_form.note.label }}{{ note_form.note(placeholder="Notes internes, visibles uniquement par la commission…") }}</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit">Enregistrer la note</button>
+    </div>
+  </form>
+
+  <div class="card card--padded" style="margin-bottom: 1rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+      <p class="prose-label" style="margin: 0;">Accès au dossier</p>
+      <button type="button" class="btn-secondary btn-sm" data-open-modal="tiers-modal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M19 8v6M22 11h-6"/>
+        </svg>
+        Ajouter un tiers
+      </button>
+    </div>
+    <div class="reponse-list">
+      {% if owner_user %}
+      <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span>{{ owner_user.name }} <span class="data-table__muted">(Déclarant)</span></span>
+      </div>
+      {% endif %}
+      {% for u in tiers_users %}
+      <div class="reponse-item" style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span>{{ u.name }} <span class="data-table__muted">(Tiers — {{ u.role_label }})</span></span>
+        <form method="post" action="{{ url_for('ceam.retirer_tiers', rapport_id=rapport.id, user_id=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-ghost btn-sm">Retirer</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="data-table__muted" style="margin: 1rem 0 0;">La commission CEAM (tous les membres) a également accès à ce dossier.</p>
+  </div>
+
+  {% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
+  {% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
+  {% if can_archive or can_delete %}
+  <div class="card card--padded">
+    <p class="prose-label">Administration du dossier</p>
+    <div class="detail-admin-actions">
+      {% if can_archive %}
+      <form method="post" action="{{ url_for('ceam.archiver', rapport_id=rapport.id) }}" data-archive-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="button" class="btn-secondary" data-confirm-archive data-reference="{{ rapport.reference }}">Archiver ce dossier</button>
+      </form>
+      {% endif %}
+      {% if can_delete %}
+      <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=rapport.id) }}" data-delete-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="button" class="btn-danger" data-confirm-delete data-reference="{{ rapport.reference }}">Supprimer définitivement</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="modal-overlay" id="suspension-modal" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="suspension-modal-title">
