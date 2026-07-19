@@ -4,8 +4,17 @@
 {% block content %}
 {% call page_header("Espace Personnel", "Déposer un rapport", "Remplis le formulaire ci-dessous pour soumettre un incident à la commission.") %}{% endcall %}
 
-<form method="post" class="form-sections" enctype="multipart/form-data">
+<form method="post" class="form-sections" enctype="multipart/form-data" id="depot-form">
   {{ form.hidden_tag() }}
+
+  <div class="draft-banner" id="draft-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+    <span>Un brouillon non envoyé a été retrouvé.</span>
+    <div class="draft-banner__actions">
+      <button type="button" class="btn-secondary btn-sm" data-restore-draft>Restaurer</button>
+      <button type="button" class="btn-ghost btn-sm" data-dismiss-draft>Ignorer</button>
+    </div>
+  </div>
 
   <div class="card card--padded form-section">
     <h2 class="form-section__title">

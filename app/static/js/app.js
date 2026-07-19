@@ -283,69 +283,7 @@
       input.disabled = true;
       await compressFileInput(input);
       input.disabled = false;
-      renderPendingAttachments(input);
     });
-  });
-
-  // ── Aperçu (en cards) des fichiers joints dans le composer du chat,
-  // avant l'envoi du message — même look que les cards de pièces jointes
-  // déjà envoyées (preuves, réponses), avec un bouton pour retirer un
-  // fichier avant de cliquer sur Envoyer. ──
-  function fileIconSvg(isPdf) {
-    return isPdf
-      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
-      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
-  }
-
-  function renderPendingAttachments(input) {
-    const composer = input.closest("form");
-    const container = composer?.querySelector("[data-pending-attachments]");
-    if (!container) return;
-
-    container.innerHTML = "";
-    Array.from(input.files || []).forEach((file, index) => {
-      const isPdf = file.type === "application/pdf";
-      const sizeKo = Math.ceil(file.size / 1024);
-
-      const card = document.createElement("div");
-      card.className = "attachment-card attachment-card--pending";
-      card.innerHTML = `
-        <div class="attachment-card__icon">${fileIconSvg(isPdf)}</div>
-        <div class="attachment-card__info">
-          <span class="attachment-card__name">${file.name}</span>
-          <span class="attachment-card__meta">${isPdf ? "PDF" : "Image"} · ${sizeKo} Ko</span>
-        </div>
-        <button type="button" class="attachment-card__remove" aria-label="Retirer ce fichier" data-remove-index="${index}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      `;
-      container.appendChild(card);
-    });
-
-    container.querySelectorAll("[data-remove-index]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const removeIndex = Number(btn.dataset.removeIndex);
-        const dataTransfer = new DataTransfer();
-        Array.from(input.files).forEach((file, i) => {
-          if (i !== removeIndex) dataTransfer.items.add(file);
-        });
-        input.files = dataTransfer.files;
-        renderPendingAttachments(input);
-      });
-    });
-  }
-
-  document.querySelectorAll(".chat-panel__attach-input").forEach((input) => {
-    input.addEventListener("change", () => {
-      // Si la compression d'images est aussi active sur ce champ, son
-      // propre gestionnaire (ci-dessus) rafraîchit déjà l'aperçu une fois
-      // les fichiers compressés — pas besoin de le refaire ici pour ce cas.
-      if (!input.hasAttribute("data-compress-images")) {
-        renderPendingAttachments(input);
-      }
-    });
-    // Après un envoi réussi la page se recharge entièrement (redirection),
-    // donc pas besoin de vider l'aperçu manuellement après soumission.
   });
 
   // ── Prévisualisation des pièces jointes (image ou PDF) dans un modal ──
@@ -452,5 +390,107 @@
 
     const initialTab = (window.location.hash || "").replace("#", "") || "rapport";
     activateTab(initialTab);
+  }
+
+  // ── Brouillon du formulaire de dépôt (localStorage) ──
+  // Les fichiers de preuve ne sont volontairement pas sauvegardés (un
+  // navigateur ne permet pas de sérialiser un File dans localStorage) —
+  // seuls les champs texte le sont. La case de certification n'est pas
+  // non plus restaurée automatiquement : c'est un engagement conscient,
+  // à recocher à chaque fois.
+  const depotForm = document.getElementById("depot-form");
+  if (depotForm) {
+    const DRAFT_KEY = "ceam-depot-draft";
+    const DRAFT_FIELDS = [
+      "plaignant_last_name", "plaignant_first_name", "plaignant_rank", "plaignant_affectation",
+      "concerne_last_name", "concerne_first_name", "concerne_rank", "concerne_affectation",
+      "event_date", "event_hour", "location", "witness", "description", "proof",
+    ];
+    // Champs utilisés uniquement pour détecter "le formulaire a-t-il déjà
+    // du contenu réel ?" — on exclut volontairement les select comme
+    // l'affectation, qui ont toujours une valeur par défaut (jamais
+    // vraiment vides) et fausseraient la détection.
+    const EMPTINESS_CHECK_FIELDS = [
+      "plaignant_last_name", "plaignant_first_name",
+      "concerne_last_name", "concerne_first_name",
+      "location", "witness", "description", "proof",
+    ];
+
+    const isFormEmpty = () =>
+      EMPTINESS_CHECK_FIELDS.every((name) => {
+        const el = document.getElementById(name);
+        return !el || !el.value.trim();
+      });
+
+    const saveDraft = () => {
+      const data = {};
+      DRAFT_FIELDS.forEach((name) => {
+        const el = document.getElementById(name);
+        if (el) data[name] = el.value;
+      });
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, savedAt: Date.now() }));
+      } catch (e) {
+        // Stockage plein ou indisponible (navigation privée) : tant pis,
+        // pas bloquant pour le reste du formulaire.
+      }
+    };
+
+    const loadDraft = () => {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const clearDraft = () => {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch (e) {
+        // rien à faire
+      }
+    };
+
+    const applyDraft = (draft) => {
+      DRAFT_FIELDS.forEach((name) => {
+        const el = document.getElementById(name);
+        if (el && draft.data[name]) el.value = draft.data[name];
+      });
+    };
+
+    // Ne proposer la restauration que si le formulaire est actuellement
+    // vide — s'il est déjà rempli (pré-remplissage Discord, ou
+    // réaffichage après une erreur de validation serveur), on ne veut
+    // surtout pas écraser ce qui est déjà correctement affiché.
+    const banner = document.getElementById("draft-banner");
+    const existingDraft = loadDraft();
+    if (existingDraft && isFormEmpty() && banner) {
+      banner.classList.add("is-visible");
+      banner.querySelector("[data-restore-draft]")?.addEventListener("click", () => {
+        applyDraft(existingDraft);
+        banner.classList.remove("is-visible");
+      });
+      banner.querySelector("[data-dismiss-draft]")?.addEventListener("click", () => {
+        clearDraft();
+        banner.classList.remove("is-visible");
+      });
+    }
+
+    // Sauvegarde continue pendant la saisie, avec un léger anti-rebond
+    // pour ne pas écrire dans localStorage à chaque frappe.
+    let draftSaveTimeout;
+    DRAFT_FIELDS.forEach((name) => {
+      const el = document.getElementById(name);
+      el?.addEventListener("input", () => {
+        clearTimeout(draftSaveTimeout);
+        draftSaveTimeout = setTimeout(saveDraft, 500);
+      });
+      el?.addEventListener("change", saveDraft);
+    });
+
+    // À l'envoi du formulaire, le brouillon local n'a plus lieu d'être.
+    depotForm.addEventListener("submit", clearDraft);
   }
 })();
