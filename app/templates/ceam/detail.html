@@ -63,7 +63,7 @@
       {% set is_cloture_reached = (value == status_cloture and rapport.status == status_cloture) %}
       {% set step_state = "completed" if (value < rapport.status or is_cloture_reached) else ("current" if value == rapport.status else "upcoming") %}
       {% set step_entry = (rapport.status_history_affichage | selectattr("status_value", "equalto", value) | list) | last %}
-      {% set display_label = "Réception" if value == status_nouveau else ("Décision rendue" if value == status_cloture else label) %}
+      {% set display_label = "Réception" if value == status_nouveau else label %}
       <div class="stepper__step stepper__step--{{ step_state }}">
         <div class="stepper__line"></div>
         <div class="stepper__circle">
@@ -306,7 +306,7 @@
       </form>
     </div>
 
-    {% elif (rapport.status == status_en_instruction and rapport.decision_rendered) or rapport.status == status_non_recevable %}
+    {% elif rapport.status == status_decision_rendue or (rapport.status == status_en_instruction and rapport.decision_rendered) or rapport.status == status_non_recevable %}
     <div class="procedure-closure">
       <p class="procedure-closure__title">Décision et classement du dossier</p>
       <form method="post" data-cloture-form>

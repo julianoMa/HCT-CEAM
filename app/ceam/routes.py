@@ -410,6 +410,7 @@ def detail(rapport_id):
         stepper_theme=stepper_theme,
         status_nouveau=Rapport.STATUS_NOUVEAU,
         status_cloture=Rapport.STATUS_CLOTURE,
+        status_decision_rendue=Rapport.STATUS_DECISION_RENDUE,
         status_en_examen=Rapport.STATUS_EN_EXAMEN,
         status_en_instruction=Rapport.STATUS_EN_INSTRUCTION,
         status_suspendu=Rapport.STATUS_TRAITEMENT_SUSPENDU,

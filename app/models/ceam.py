@@ -10,13 +10,14 @@ COLLECTION = "ceam"
 
 
 class Rapport:
-    # Statuts (schéma : status de 0 à 5)
+    # Statuts (schéma : status de 0 à 6)
     STATUS_NOUVEAU = 0
     STATUS_EN_EXAMEN = 1
     STATUS_EN_INSTRUCTION = 2
     STATUS_TRAITEMENT_SUSPENDU = 3
     STATUS_NON_RECEVABLE = 4
-    STATUS_CLOTURE = 5
+    STATUS_DECISION_RENDUE = 5
+    STATUS_CLOTURE = 6
 
     STATUS_LABELS = {
         STATUS_NOUVEAU: "Nouveau",
@@ -24,6 +25,7 @@ class Rapport:
         STATUS_EN_INSTRUCTION: "En cours d'instruction",
         STATUS_TRAITEMENT_SUSPENDU: "Traitement suspendu",
         STATUS_NON_RECEVABLE: "Non recevable",
+        STATUS_DECISION_RENDUE: "Décision rendue",
         STATUS_CLOTURE: "Clôturé",
     }
 
@@ -34,6 +36,7 @@ class Rapport:
         STATUS_EN_INSTRUCTION,
         STATUS_TRAITEMENT_SUSPENDU,
         STATUS_NON_RECEVABLE,
+        STATUS_DECISION_RENDUE,
     ]
 
     AFFECTATIONS = ["TMC", "NMH"]
@@ -562,9 +565,13 @@ class Rapport:
 
         if self.status == self.STATUS_TRAITEMENT_SUSPENDU:
             self._change_status(self.STATUS_EN_INSTRUCTION, author_name, author_rank)
+
+        self._change_status(self.STATUS_DECISION_RENDUE, author_name, author_rank)
+
         db = get_db()
         db.collection(COLLECTION).document(str(self.id)).update({"decision_rendered": True})
         self.decision_rendered = True
+        
         AuditLog.record(
             action=AuditLog.ACTION_STATUS_CHANGE,
             actor_name=author_name,
