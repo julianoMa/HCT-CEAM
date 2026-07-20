@@ -553,7 +553,8 @@ def piece_jointe(rapport_id, attachment_id):
 
     is_owner = rapport.owner_id == current_user.id
     is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
-    if not is_owner and not is_ceam_member:
+    is_tiers = current_user.id in rapport.tiers_ids
+    if not is_owner and not is_ceam_member and not is_tiers:
         abort(403)
     if rapport.archived and not is_ceam_member:
         abort(403)
