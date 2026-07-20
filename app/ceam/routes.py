@@ -10,7 +10,7 @@ from app.models.reglement import Reglement
 from app.models.user import User
 from app.pdf_export import generate_dossier_pdf
 from app.permissions import requires_role
-from app.storage import fetch_attachment, upload_reponse_attachment
+from app.storage import fetch_attachment, upload_reponse_attachment, upload_reponse_attachments_bulk
 
 bp = Blueprint("ceam", __name__, url_prefix="/ceam")
 
@@ -58,19 +58,12 @@ def depot():
         # Les fichiers ne peuvent être uploadés qu'une fois l'ID du dossier
         # connu (le stockage est organisé par dossier) : on le fait donc
         # juste après la création, puis on rattache le résultat au rapport.
-        attachments = []
-        rejected = []
-        for uploaded in request.files.getlist("proof_files"):
-            if not uploaded or not uploaded.filename:
-                continue
-            try:
-                meta = upload_reponse_attachment(rapport.id, uploaded)
-            except Exception:  # noqa: BLE001 - un souci Storage ne doit pas bloquer le dépôt
-                meta = None
-            if meta:
-                attachments.append(meta)
-            else:
-                rejected.append(uploaded.filename)
+        # Uploadés en parallèle (pas un par un) quand il y en a plusieurs.
+        uploads = request.files.getlist("proof_files")
+        results = upload_reponse_attachments_bulk(rapport.id, uploads)
+        submitted_names = [f.filename for f in uploads if f and f.filename]
+        attachments = [r for r in results if r]
+        rejected = [name for name, r in zip(submitted_names, results) if not r]
         if attachments:
             rapport.set_proof_attachments(attachments)
 
@@ -310,19 +303,11 @@ def detail(rapport_id):
             return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
         visibility = "everyone" if raw_thread == "everyone" else int(raw_thread)
 
-        attachments = []
-        rejected = []
-        for uploaded in request.files.getlist("attachments"):
-            if not uploaded or not uploaded.filename:
-                continue
-            try:
-                meta = upload_reponse_attachment(rapport.id, uploaded)
-            except Exception:  # noqa: BLE001 - un souci Storage ne doit pas faire planter l'envoi
-                meta = None
-            if meta:
-                attachments.append(meta)
-            else:
-                rejected.append(uploaded.filename)
+        uploads = request.files.getlist("attachments")
+        results = upload_reponse_attachments_bulk(rapport.id, uploads)
+        submitted_names = [f.filename for f in uploads if f and f.filename]
+        attachments = [r for r in results if r]
+        rejected = [name for name, r in zip(submitted_names, results) if not r]
 
         rapport.add_reponse(
             type_="Message",
@@ -399,19 +384,11 @@ def detail(rapport_id):
             return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="instruction"))
 
         if action == "reponse" and reponse_form.validate_on_submit():
-            attachments = []
-            rejected = []
-            for uploaded in request.files.getlist("attachments"):
-                if not uploaded or not uploaded.filename:
-                    continue
-                try:
-                    meta = upload_reponse_attachment(rapport.id, uploaded)
-                except Exception:  # noqa: BLE001 - un souci Storage ne doit pas faire planter l'envoi
-                    meta = None
-                if meta:
-                    attachments.append(meta)
-                else:
-                    rejected.append(uploaded.filename)
+            uploads = request.files.getlist("attachments")
+            results = upload_reponse_attachments_bulk(rapport.id, uploads)
+            submitted_names = [f.filename for f in uploads if f and f.filename]
+            attachments = [r for r in results if r]
+            rejected = [name for name, r in zip(submitted_names, results) if not r]
 
             rapport.add_reponse(
                 type_=reponse_form.type.data,

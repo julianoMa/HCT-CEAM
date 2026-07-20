@@ -19,6 +19,7 @@ lui-même la limite de 1 Mo au fil des réponses envoyées.
 
 import base64
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from app.extensions import get_db
 
@@ -78,6 +79,32 @@ def upload_reponse_attachment(rapport_id, file_storage):
         "content_type": file_storage.content_type,
         "size": size,
     }
+
+
+def upload_reponse_attachments_bulk(rapport_id, file_storages):
+    """Charge PLUSIEURS pièces jointes EN PARALLÈLE plutôt qu'une par une.
+    Chaque fichier implique une écriture Firestore indépendante (donc un
+    aller-retour réseau chacune) — les envoyer en série pouvait ralentir
+    sensiblement le dépôt d'un rapport ou l'envoi d'un message dès que
+    plusieurs pièces jointes étaient attachées d'un coup.
+
+    Retourne une liste de résultats dans le MÊME ORDRE que les fichiers
+    fournis (dict de métadonnées si accepté, None si le fichier était
+    invalide/rejeté) — pour que l'appelant sache exactement à quel
+    fichier correspond chaque résultat, comme avec la boucle séquentielle
+    d'avant."""
+    file_storages = [f for f in file_storages if f and f.filename]
+    if not file_storages:
+        return []
+
+    def _upload_one(file_storage):
+        try:
+            return upload_reponse_attachment(rapport_id, file_storage)
+        except Exception:  # noqa: BLE001 - un souci Storage ne doit jamais bloquer les autres fichiers
+            return None
+
+    with ThreadPoolExecutor(max_workers=min(8, len(file_storages))) as executor:
+        return list(executor.map(_upload_one, file_storages))
 
 
 def fetch_attachment(attachment_id, rapport_id):
