@@ -2542,7 +2542,7 @@ button.is-submitting,
 }
 
 .chat-message--mine .chat-message__bubble {
-  background: var(--accent-soft);
+  background: var(--info-bg);
 }
 
 .chat-message__header {
