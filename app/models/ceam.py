@@ -148,8 +148,11 @@ class Rapport:
 
     @property
     def reponses_affichage(self):
-        """Historique des réponses, prêt à afficher (libellé de type + date
-        FR), dans l'ordre chronologique d'envoi."""
+        """Historique complet des réponses, prêt à afficher (libellé de
+        type + date FR), SANS filtrage de visibilité — utilisé pour les
+        exports/contextes où la vue complète est nécessaire (PDF CEAM,
+        etc.). Pour l'affichage dans l'onglet Échanges, voir
+        `visible_reponses` ci-dessous, qui applique la confidentialité."""
         affichage = []
         for r in self.reponses:
             sent_at = r.get("sent_at", "")
@@ -163,8 +166,72 @@ class Rapport:
                 "sent_at_fr": sent_at_fr,
                 "attachments": r.get("attachments") or [],
                 "read_by": r.get("read_by") or [],
+                "visibility": r.get("visibility", "everyone"),
             })
         return affichage
+
+    def _is_reponse_visible_to(self, r, user_id, is_ceam_member):
+        """Règle de confidentialité d'un message. `visibility` identifie le
+        FIL de discussion auquel appartient le message :
+        - "everyone" : le fil général, visible par tout le monde.
+        - un user_id : le fil privé entre la commission et CE participant
+          externe précis (déclarant ou tiers) — peu importe lequel des
+          deux a réellement écrit le message, le fil appartient à ce
+          participant. La commission voit tous les fils (supervision
+          complète) ; un participant externe ne voit que le fil général
+          et SON PROPRE fil privé, jamais celui d'un autre participant."""
+        if is_ceam_member:
+            return True
+        visibility = r.get("visibility", "everyone")
+        if visibility == "everyone":
+            return True
+        return visibility == user_id
+
+    def visible_reponses(self, user_id, is_ceam_member):
+        """Messages de l'espace d'échanges réellement visibles par cette
+        personne précise, tous fils confondus (voir _is_reponse_visible_to).
+        Utilisé pour les compteurs globaux ; pour l'affichage par fil de
+        discussion, voir `conversations_for` ci-dessous."""
+        return [
+            r for r in self.reponses_affichage
+            if self._is_reponse_visible_to(
+                {"visibility": r["visibility"], "author_id": r["author_id"]}, user_id, is_ceam_member,
+            )
+        ]
+
+    def conversations_for(self, user_id, is_ceam_member, owner_user=None, tiers_users=None):
+        """Regroupe les messages en fils de discussion distincts, adaptés
+        à qui regarde :
+        - un membre CEAM voit le fil général + un fil privé par
+          participant externe (déclarant, chaque tiers) — même vide, pour
+          pouvoir en démarrer un ;
+        - un participant externe (déclarant/tiers) ne voit que le fil
+          général + SON PROPRE fil privé avec la commission.
+        Chaque fil est un dict : {key, label, messages, unread_count}.
+        `key` vaut "everyone" ou l'ID (int) du participant externe
+        propriétaire du fil — c'est aussi la valeur à soumettre dans le
+        formulaire pour écrire dans ce fil précis."""
+        all_messages = self.reponses_affichage
+
+        def build_thread(key, label):
+            if key == "everyone":
+                messages = [m for m in all_messages if m["visibility"] == "everyone"]
+            else:
+                messages = [m for m in all_messages if m["visibility"] == key]
+            unread = sum(1 for m in messages if user_id not in (m.get("read_by") or []))
+            return {"key": key, "label": label, "messages": messages, "unread_count": unread}
+
+        threads = [build_thread("everyone", "Tout le monde")]
+
+        if is_ceam_member:
+            if owner_user is not None:
+                threads.append(build_thread(owner_user.id, f"{owner_user.name} (Plaignant)"))
+            for u in (tiers_users or []):
+                threads.append(build_thread(u.id, f"{u.name} (Tiers)"))
+        else:
+            threads.append(build_thread(user_id, "La commission"))
+
+        return threads
 
     @property
     def status_history_affichage(self):
@@ -585,10 +652,18 @@ class Rapport:
         self._change_status(self.STATUS_CLOTURE, author_name, author_rank)
         self.set_messages_locked(True)
 
-    def add_reponse(self, type_, content, author_name, author_rank, author_id=None, author_is_ceam=True, attachments=None):
-        """Ajoute un message à l'espace d'échanges du dossier (réponse
+    def add_reponse(self, type_, content, author_name, author_rank, author_id=None, author_is_ceam=True,
+                    attachments=None, visibility="everyone"):
+        """Ajoute un message à un fil de discussion du dossier (réponse
         officielle CEAM, ou message libre d'un déclarant/tiers/membre CEAM),
-        le persiste, et notifie les autres participants autorisés."""
+        le persiste, et notifie les personnes autorisées à le voir.
+
+        visibility identifie le FIL auquel appartient le message :
+        - "everyone" : le fil général, visible par tout le monde — défaut.
+        - un user_id (int) : le fil privé entre la commission et ce
+          participant externe précis (déclarant ou tiers), peu importe
+          lequel des deux écrit dans ce fil. La commission voit toujours
+          tous les fils (supervision complète du dossier)."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
         from app.models.notification import Notification  # idem
 
@@ -603,6 +678,7 @@ class Rapport:
             "attachments": attachments or [],
             # L'auteur a évidemment déjà "lu" son propre message.
             "read_by": [author_id] if author_id is not None else [],
+            "visibility": visibility,
         }
         reponses = self.reponses + [reponse]
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
@@ -618,9 +694,20 @@ class Rapport:
         # pas besoin de doublonner ici.
         if type_ != self.ACCUSE_RECEPTION_TYPE:
             destinataires = set()
-            if author_id != self.owner_id:
-                destinataires.add(self.owner_id)
-            destinataires.update(t for t in self.tiers_ids if t != author_id)
+            if visibility == "everyone":
+                if author_id != self.owner_id:
+                    destinataires.add(self.owner_id)
+                destinataires.update(t for t in self.tiers_ids if t != author_id)
+            else:
+                # visibility est l'ID du participant externe propriétaire
+                # du fil privé. Si c'est LUI qui vient d'écrire, aucune
+                # notification in-app n'est créée : la commission n'a pas
+                # de notification in-app individuelle (seulement des MP
+                # Discord, voir _notifier_message), et il n'y a personne
+                # d'autre à prévenir sur ce fil. Si c'est la commission qui
+                # cible ce participant, on le notifie en in-app.
+                if visibility != author_id:
+                    destinataires.add(visibility)
             for user_id in destinataires:
                 Notification.create(
                     user_id=user_id,
@@ -630,14 +717,17 @@ class Rapport:
                 )
         return reponse
 
-    def mark_messages_read(self, user_id):
-        """Marque tous les messages de l'espace d'échanges comme lus pour
-        cette personne (appelé à chaque consultation du dossier)."""
+    def mark_messages_read(self, user_id, is_ceam_member=False):
+        """Marque comme lus, pour cette personne, tous les messages
+        qu'elle peut réellement voir (respecte la confidentialité —
+        inutile et incorrect de marquer "lu" un message qu'elle ne voit
+        même pas)."""
         changed = False
         reponses = []
         for r in self.reponses:
             read_by = r.get("read_by") or []
-            if user_id not in read_by:
+            visible = self._is_reponse_visible_to(r, user_id, is_ceam_member)
+            if visible and user_id not in read_by:
                 read_by = read_by + [user_id]
                 changed = True
             reponses.append({**r, "read_by": read_by})
@@ -646,8 +736,12 @@ class Rapport:
             db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
             self.reponses = reponses
 
-    def unread_messages_count(self, user_id):
-        return sum(1 for r in self.reponses if user_id not in (r.get("read_by") or []))
+    def unread_messages_count(self, user_id, is_ceam_member=False):
+        return sum(
+            1 for r in self.reponses
+            if self._is_reponse_visible_to(r, user_id, is_ceam_member)
+            and user_id not in (r.get("read_by") or [])
+        )
 
     def _notifier_nouveau_rapport(self):
         """MP à tous les membres de la commission lors du dépôt d'un rapport."""
@@ -670,10 +764,16 @@ class Rapport:
             send_discord_dm(membre.discord_id, embed=embed)
 
     def _notifier_message(self, reponse, author_id, author_is_ceam):
-        """MP Discord aux autres participants autorisés lors de l'ajout
-        d'un message dans l'espace d'échanges. Si l'auteur est un membre
-        CEAM, notifie le déclarant et les tiers ; sinon (déclarant ou
-        tiers qui écrit), notifie toute la commission CEAM."""
+        """MP Discord aux personnes autorisées à voir ce message précis,
+        selon le fil auquel il appartient :
+        - "everyone" : déclarant + tiers (si auteur CEAM) ou toute la
+          commission (si auteur externe), comme avant.
+        - un fil privé (visibility = user_id du participant externe
+          propriétaire du fil) :
+          - si c'est CE participant qui vient d'écrire, on notifie toute
+            la commission (c'est elle qui doit être mise au courant) ;
+          - si c'est la commission qui vient d'écrire (ciblant ce
+            participant), on ne notifie que lui."""
         from app.models.user import User  # import différé : évite un cycle d'import
         from app.notifications import build_embed, send_discord_dm
 
@@ -683,7 +783,24 @@ class Rapport:
             fields=[{"name": "Type", "value": reponse["type"], "inline": False}],
             url=self._detail_url(),
         )
+        visibility = reponse.get("visibility", "everyone")
 
+        if isinstance(visibility, int):
+            if visibility == author_id:
+                # Le propriétaire du fil privé vient d'y écrire -> notifier
+                # toute la commission.
+                for membre in User.list_ceam_members():
+                    if membre.id != author_id:
+                        send_discord_dm(membre.discord_id, embed=embed)
+            else:
+                # La commission vient d'écrire dans le fil privé de ce
+                # participant -> ne notifier que lui.
+                cible = User.get(visibility)
+                if cible is not None:
+                    send_discord_dm(cible.discord_id, embed=embed)
+            return
+
+        # visibility == "everyone"
         if author_is_ceam:
             destinataires_ids = {self.owner_id, *self.tiers_ids} - {author_id}
             for user_id in destinataires_ids:

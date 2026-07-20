@@ -195,16 +195,11 @@ def detail(rapport_id):
     # Les messages de l'espace d'échanges, en revanche, sont marqués lus
     # pour QUICONQUE consulte le dossier (déclarant, tiers, ou membre
     # CEAM) : tout le monde a besoin de son propre suivi lu/non-lu sur la
-    # conversation, contrairement aux notifications ci-dessus.
-    # Le compteur de messages non lus est calculé AVANT de les marquer
-    # comme lus juste après, pour que le badge de l'onglet Échanges
-    # reflète bien "combien de nouveaux messages depuis ta dernière
-    # visite" au moment où la page se charge.
-    unread_messages_count = rapport.unread_messages_count(current_user.id)
-    rapport.mark_messages_read(current_user.id)
+    # conversation, contrairement aux notifications ci-dessus. Voir plus
+    # bas (juste avant conversations_for) pour l'appel effectif : il lui
+    # faut owner_user/tiers_users, calculés juste avant.
 
     reponse_form = None
-    message_form = MessageForm()
     note_form = None
     suspension_form = None
     cloture_form = None
@@ -214,6 +209,29 @@ def detail(rapport_id):
     if is_ceam_member:
         excluded_ids = {rapport.owner_id, *rapport.tiers_ids}
         available_users = [u for u in User.list_all() if u.id not in excluded_ids]
+
+    # Le compteur de messages non lus est calculé AVANT de les marquer
+    # comme lus juste après, pour que les badges reflètent bien "combien
+    # de nouveaux messages depuis ta dernière visite" au moment du
+    # chargement de la page.
+    unread_messages_count = rapport.unread_messages_count(current_user.id, is_ceam_member)
+    rapport.mark_messages_read(current_user.id, is_ceam_member)
+    conversations = rapport.conversations_for(current_user.id, is_ceam_member, owner_user, tiers_users)
+
+    # Fils de discussion réellement autorisés pour CETTE personne — sert de
+    # liste blanche stricte pour valider le champ "thread" soumis, afin
+    # qu'un participant externe ne puisse jamais forger une requête pour
+    # écrire dans le fil privé d'un AUTRE participant. Les valeurs
+    # possibles : "everyone", ou l'ID (en chaîne) d'un participant externe.
+    if is_ceam_member:
+        allowed_thread_keys = {"everyone"}
+        if owner_user is not None:
+            allowed_thread_keys.add(str(owner_user.id))
+        allowed_thread_keys.update(str(u.id) for u in tiers_users)
+    else:
+        allowed_thread_keys = {"everyone", str(current_user.id)}
+
+    message_form = MessageForm()
 
     action = request.form.get("action")
 
@@ -241,6 +259,15 @@ def detail(rapport_id):
         return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
 
     if action == "message" and message_form.validate_on_submit():
+        raw_thread = message_form.thread.data
+        if raw_thread not in allowed_thread_keys:
+            # Valeur hors de la liste blanche pour ce rôle : requête
+            # forgée, ou fil devenu invalide (ex: tiers retiré entre
+            # temps) — on refuse sans planter.
+            flash("Ce fil de discussion n'est pas accessible.", "danger")
+            return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
+        visibility = "everyone" if raw_thread == "everyone" else int(raw_thread)
+
         attachments = []
         rejected = []
         for uploaded in request.files.getlist("attachments"):
@@ -263,6 +290,7 @@ def detail(rapport_id):
             author_id=current_user.id,
             author_is_ceam=is_ceam_member,
             attachments=attachments,
+            visibility=visibility,
         )
         if rejected:
             flash(
@@ -395,6 +423,7 @@ def detail(rapport_id):
     return render_template(
         "ceam/detail.html",
         rapport=rapport,
+        conversations=conversations,
         note_form=note_form,
         suspension_form=suspension_form,
         cloture_form=cloture_form,

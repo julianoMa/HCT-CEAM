@@ -381,7 +381,7 @@
         btn.classList.toggle("is-active", btn.dataset.tabTrigger === name);
       });
       if (name === "echanges") {
-        const chatArea = document.querySelector("[data-chat-scroll]");
+        const chatArea = document.querySelector(".chat-conversation-panel.is-active [data-chat-scroll]");
         if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
       }
     };
@@ -553,5 +553,28 @@
   } else {
     // Navigateur sans IntersectionObserver (très rare) : afficher direct.
     revealTargets.forEach((el) => el.classList.add("is-revealed"));
+  }
+
+  // ── Bascule entre conversations (onglet Échanges) ──
+  // Même principe que les onglets Rapport/Échanges/Instruction : un clic
+  // sur une conversation affiche son panneau (messages + composer propre
+  // à ce fil précis) et masque les autres.
+  const conversationTriggers = document.querySelectorAll("[data-conversation-trigger]");
+  const conversationPanels = document.querySelectorAll("[data-conversation-panel]");
+  if (conversationTriggers.length && conversationPanels.length) {
+    const activateConversation = (key) => {
+      conversationPanels.forEach((panel) => {
+        panel.classList.toggle("is-active", panel.dataset.conversationPanel === key);
+      });
+      conversationTriggers.forEach((btn) => {
+        btn.classList.toggle("is-active", btn.dataset.conversationTrigger === key);
+      });
+      const chatArea = document.querySelector('[data-conversation-panel="' + key + '"] [data-chat-scroll]');
+      if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+    };
+
+    conversationTriggers.forEach((btn) => {
+      btn.addEventListener("click", () => activateConversation(btn.dataset.conversationTrigger));
+    });
   }
 })();

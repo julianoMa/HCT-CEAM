@@ -84,11 +84,15 @@ class ReponseForm(FlaskForm):
 
 
 class MessageForm(FlaskForm):
-    """Message libre dans l'espace d'échanges du dossier — ouvert au
+    """Message libre dans un fil de discussion du dossier — ouvert au
     déclarant, aux tiers, et aux membres CEAM (contrairement à ReponseForm,
-    réservée à la commission pour les réponses officielles catégorisées)."""
+    réservée à la commission pour les réponses officielles catégorisées).
+    Le fil visé (thread) est transmis par un champ caché propre à chaque
+    conversation dans le template, pas par un choix libre ici — voir la
+    validation de sa valeur, faite côté route, dans app/ceam/routes.py."""
     content = TextAreaField("Message", validators=[DataRequired()])
     attachments = MultipleFileField("Pièces jointes (PDF, images)")
+    thread = StringField("Fil de discussion", validators=[DataRequired()])
 
 
 class ReglementForm(FlaskForm):
