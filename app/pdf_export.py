@@ -10,6 +10,8 @@ librairie type WeasyPrint sur un hébergement serverless comme Vercel.
 
 from datetime import datetime, timezone
 
+from pathlib import Path
+
 from app.timezone_utils import APP_TIMEZONE
 
 from fpdf import FPDF
@@ -23,6 +25,13 @@ MUTED_RGB = (100, 116, 139)
 class _DossierPDF(FPDF):
     def __init__(self, reference):
         super().__init__(orientation="P", unit="mm", format="A4")
+
+        fonts = Path(__file__).parent / "fonts"
+
+        self.add_font("DejaVu", "", str(fonts / "dejavu.ttf"))
+        self.add_font("DejaVu", "B", str(fonts / "dejavu_b.ttf"))
+        self.add_font("DejaVu", "I", str(fonts / "dejavu_i.ttf"))
+
         self.reference = reference
         self.set_auto_page_break(auto=True, margin=18)
 
@@ -31,9 +40,9 @@ class _DossierPDF(FPDF):
         self.rect(0, 0, 210, 22, style="F")
         self.set_xy(10, 6)
         self.set_text_color(*DARK_TEXT_RGB)
-        self.set_font("Helvetica", "B", 14)
+        self.set_font("DejaVu", "B", 14)
         self.cell(0, 6, "Commission d'Éthique des Affaires Médicales", new_x="LMARGIN", new_y="NEXT")
-        self.set_font("Helvetica", "", 10)
+        self.set_font("DejaVu", "", 10)
         self.set_x(10)
         self.cell(0, 6, f"Dossier {self.reference}", new_x="LMARGIN", new_y="NEXT")
         self.ln(8)
@@ -41,13 +50,13 @@ class _DossierPDF(FPDF):
 
     def footer(self):
         self.set_y(-15)
-        self.set_font("Helvetica", "I", 8)
+        self.set_font("DejaVu", "I", 8)
         self.set_text_color(*MUTED_RGB)
         self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
 
     def section_title(self, title):
         self.ln(2)
-        self.set_font("Helvetica", "B", 12)
+        self.set_font("DejaVu", "B", 12)
         self.set_text_color(*TEXT_RGB)
         self.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
         self.set_draw_color(*ACCENT_RGB)
@@ -57,15 +66,15 @@ class _DossierPDF(FPDF):
         self.ln(3)
 
     def label_value(self, label, value):
-        self.set_font("Helvetica", "B", 10)
+        self.set_font("DejaVu", "B", 10)
         self.set_text_color(*MUTED_RGB)
         self.cell(45, 6, label, new_x="RIGHT", new_y="TOP")
-        self.set_font("Helvetica", "", 10)
+        self.set_font("DejaVu", "", 10)
         self.set_text_color(*TEXT_RGB)
         self.multi_cell(145, 6, value or "-", new_x="LMARGIN", new_y="NEXT")
 
     def body_text(self, text):
-        self.set_font("Helvetica", "", 10)
+        self.set_font("DejaVu", "", 10)
         self.set_text_color(*TEXT_RGB)
         self.multi_cell(0, 6, text or "-", new_x="LMARGIN", new_y="NEXT")
         self.ln(1)
@@ -116,7 +125,7 @@ def generate_dossier_pdf(rapport):
     pdf.section_title("Réponses officielles de la commission")
     if rapport.reponses_affichage:
         for r in rapport.reponses_affichage:
-            pdf.set_font("Helvetica", "B", 10)
+            pdf.set_font("DejaVu", "B", 10)
             pdf.set_text_color(*TEXT_RGB)
             pdf.multi_cell(
                 0, 6,
@@ -126,7 +135,7 @@ def generate_dossier_pdf(rapport):
             pdf.body_text(r["content"])
             if r.get("attachments"):
                 noms = ", ".join(a["name"] for a in r["attachments"])
-                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_font("DejaVu", "I", 9)
                 pdf.set_text_color(*MUTED_RGB)
                 pdf.multi_cell(0, 6, f"Pièces jointes : {noms}", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(2)
@@ -134,7 +143,7 @@ def generate_dossier_pdf(rapport):
         pdf.body_text("Aucune réponse envoyée pour le moment.")
 
     pdf.ln(4)
-    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_font("DejaVu", "I", 8)
     pdf.set_text_color(*MUTED_RGB)
     pdf.multi_cell(
         0, 6,
