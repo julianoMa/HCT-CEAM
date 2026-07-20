@@ -66,6 +66,25 @@
     </div>
   </section>
 
+  <h2>Les membres de la CEAM</h2>
+  <div class="team-grid">
+    <div class="team-card">
+      <img src="https://2img.net/u/4015/30/61/39/avatars/47-95.jpg" alt="Membre 1" class="team-card__avatar">
+      <h3 class="team-card__name">DEO. Torry Cook</h3>
+      <p class="team-card__role">Réprésentant de la Direction Général</p>
+    </div>
+    <div class="team-card">
+      <img src="https://zupimages.net/up/22/13/jpa6.png" alt="Membre 2" class="team-card__avatar">
+      <h3 class="team-card__name">Karren Scarborough</h3>
+      <p class="team-card__role">Présidente de la CEAM</p>
+    </div>
+    <div class="team-card">
+      <img src="{{ url_for('static', filename='img/member3.png') }}" alt="Membre 3" class="team-card__avatar">
+      <h3 class="team-card__name">Mark K. Campbell</h3>
+      <p class="team-card__role">Membre de la CEAM</p>
+    </div>
+  </div>
+
   <div class="card-grid">
     <section class="card card--padded ceam-section" data-reveal>
       <h2 class="ceam-section__title">Champ de compétence</h2>
@@ -156,9 +175,10 @@
       dossier, via trois types de réponses officielles :
     </p>
     <ul class="ceam-list">
-      <li><strong>Accusé de réception</strong> — envoyé automatiquement dès le dépôt du rapport</li>
-      <li><strong>Issue de l'examen préliminaire</strong> — statue sur la recevabilité du dossier et la suite ordonnée</li>
-      <li><strong>Procès-verbal ou délibéré</strong> — formalise la décision finale de la commission</li>
+      <li><strong>Accusé de réception</strong> — confirme la bonne réception du rapport par la Commission (transmis automatiquement lors du dépôt du rapport).</li>
+      <li><strong>Décision statuant à l’issue de l’examen préliminaire</strong> — statue sur la recevabilité du rapport et détermine les suites à lui donner, notamment l’ouverture ou non d’une instruction.</li>
+      <li><strong>Procès-verbal d’audition</strong> — consigne officiellement l’ensemble des éléments recueillis par la Commission au cours d’une audition, notamment les déclarations et pièces communiquées à cette occasion.</li>
+      <li><strong>Délibéré</strong> — formalise la décision définitive adoptée par la Commission à l’issue de l’instruction et de ses délibérations.</li>
     </ul>
     <p class="prose">
       Chaque réponse est consultable à tout moment dans l'historique du
