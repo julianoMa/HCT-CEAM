@@ -1,8 +1,10 @@
 import hashlib
 import os
 
+import rcssmin
+import rjsmin
 from dotenv import load_dotenv
-from flask import Flask, url_for
+from flask import Flask, Response, url_for
 
 from app.config import Config
 from app.extensions import csrf, init_firestore, login_manager
@@ -22,6 +24,31 @@ def _compute_static_fingerprint(static_folder, filename):
             return hashlib.md5(f.read()).hexdigest()[:8]
     except OSError:
         return None
+
+
+# Fichiers servis en version minifiée (commentaires/espaces retirés) au
+# lieu du fichier tel quel : {chemin sous static/: (type MIME, fonction de
+# minification)}. Calculée en mémoire à la première requête qui la
+# demande, puis mise en cache pour le reste du process — jamais écrite sur
+# disque, pour rester compatible avec un système de fichiers en lecture
+# seule à l'exécution (cas courant en hébergement serverless).
+_MINIFIABLE_FILES = {
+    "css/style.css": ("text/css; charset=utf-8", rcssmin.cssmin),
+    "js/app.js": ("application/javascript; charset=utf-8", rjsmin.jsmin),
+}
+
+
+def _compute_minified(static_folder, filename, minify_func):
+    """Version minifiée du contenu ACTUEL du fichier. Si la lecture ou la
+    minification échoue pour une raison quelconque, retombe sur le
+    contenu original tel quel plutôt que de casser la page."""
+    filepath = os.path.join(static_folder, filename)
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw = f.read()
+    try:
+        return minify_func(raw)
+    except Exception:  # noqa: BLE001 - un souci de minification ne doit jamais casser le site
+        return raw
 
 
 def create_app(config_class=Config):
@@ -60,6 +87,28 @@ def create_app(config_class=Config):
                 url = f"{url}?v={fingerprint}"
             return url
         return dict(versioned_static=versioned_static)
+
+    minified_cache = {}
+
+    def _make_minified_view(filename, mimetype, minify_func):
+        def view():
+            if filename not in minified_cache:
+                minified_cache[filename] = _compute_minified(app.static_folder, filename, minify_func)
+            resp = Response(minified_cache[filename], mimetype=mimetype)
+            resp.cache_control.public = True
+            resp.cache_control.max_age = app.config["SEND_FILE_MAX_AGE_DEFAULT"]
+            return resp
+        return view
+
+    for _filename, (_mimetype, _minify_func) in _MINIFIABLE_FILES.items():
+        try:
+            app.add_url_rule(
+                f"/static/{_filename}",
+                endpoint=f"minified__{_filename.replace('/', '_')}",
+                view_func=_make_minified_view(_filename, _mimetype, _minify_func),
+            )
+        except Exception:  # noqa: BLE001 - au pire, Flask sert le fichier tel quel (route par défaut)
+            app.logger.warning("Minification indisponible pour %s, fichier servi tel quel.", _filename)
 
     init_firestore(app)
     login_manager.init_app(app)

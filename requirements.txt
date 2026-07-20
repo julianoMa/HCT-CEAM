@@ -6,3 +6,5 @@ requests==2.32.3
 python-dotenv==1.0.1
 fpdf2==2.8.7
 tzdata==2024.1
+rcssmin==1.2.2
+rjsmin==1.2.5
