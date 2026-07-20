@@ -294,7 +294,11 @@ class Rapport:
         if is_ceam_member:
             if owner_user is not None:
                 threads.append(build_thread(owner_user.id, f"{owner_user.name} (Plaignant)"))
+
+            print("tiers_roles :", self.tiers_roles)
             for u in (tiers_users or []):
+                print("Valeur trouvée :", (self.tiers_roles or {}).get(str(u.id)))
+                print("Toutes les clés :", list((self.tiers_roles or {}).keys()))
                 role = (self.tiers_roles or {}).get(str(u.id), "Tiers")
                 threads.append(build_thread(u.id, f"{u.name} ({role})"))
         else:
@@ -992,8 +996,9 @@ class Rapport:
         tiers_roles = dict(self.tiers_roles or {})
         tiers_roles[str(user_id)] = role_ajout
 
-        db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
+        db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids, "tiers_roles": tiers_roles})
         self.tiers_ids = tiers_ids
+        self.tiers_roles = tiers_roles
         self._notifier_tiers_ajoute(user_id, role_ajout)
         return True
 
@@ -1007,8 +1012,9 @@ class Rapport:
         tiers_roles = dict(self.tiers_roles or {})
         tiers_roles.pop(str(user_id), None)
 
-        db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
+        db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids, "tiers_roles": tiers_roles})
         self.tiers_ids = tiers_ids
+        self.tiers_roles = tiers_roles
         return True
 
     def _notifier_tiers_ajoute(self, user_id, role_ajout="Tiers"):
