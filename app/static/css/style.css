@@ -1144,6 +1144,16 @@ button svg, .btn svg, .btn-primary svg, .btn-secondary svg, .btn-danger svg, .bt
   color: #fff;
 }
 
+.btn-warn {
+  background: #fb923c;
+  color: #fff;
+}
+
+.btn-warn:hover {
+  background: #c47230;
+  color: #fff;
+}
+
 .btn-sm {
   padding: 9px 14px;
   font-size: 13px;
