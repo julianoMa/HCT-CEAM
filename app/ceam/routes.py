@@ -659,16 +659,24 @@ def ajouter_tiers(rapport_id):
     user_id = request.form.get("user_id", type=int)
     user = User.get(user_id) if user_id else None
 
+    # Le rôle choisi (Tiers / Mis en cause / Témoin) ne sert qu'à
+    # personnaliser le MP Discord envoyé à la personne — liste blanche
+    # stricte pour éviter qu'une valeur forgée n'atterrisse telle quelle
+    # dans le message envoyé.
+    role_ajout = request.form.get("role_ajout", "Tiers")
+    if role_ajout not in ("Tiers", "Mis en cause", "Témoin"):
+        role_ajout = "Tiers"
+
     if user is None:
         flash("Utilisateur introuvable.", "danger")
-    elif not rapport.add_tiers(user_id):
+    elif not rapport.add_tiers(user_id, role_ajout):
         flash(f"{user.name} a déjà accès à ce dossier.", "danger")
     else:
         AuditLog.record(
             action=AuditLog.ACTION_TIERS_ADD,
             actor_name=current_user.name,
             actor_id=current_user.id,
-            details=f"{current_user.name} a donné accès au dossier {rapport.reference} à {user.name}",
+            details=f"{current_user.name} a donné accès au dossier {rapport.reference} à {user.name} (en tant que {role_ajout})",
         )
         flash(f"{user.name} a été ajouté au dossier et peut désormais le consulter.", "success")
 

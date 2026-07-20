@@ -920,17 +920,22 @@ class Rapport:
         db.collection(COLLECTION).document(str(self.id)).update({"messages_locked": locked})
         self.messages_locked = locked
 
-    def add_tiers(self, user_id):
+    def add_tiers(self, user_id, role_ajout="Tiers"):
         """Ajoute un utilisateur tiers, qui pourra désormais consulter ce
         dossier (et sera notifié in-app + Discord). Retourne False sans
-        rien faire si la personne est déjà le déclarant ou déjà tiers."""
+        rien faire si la personne est déjà le déclarant ou déjà tiers.
+
+        `role_ajout` (Tiers / Mis en cause / Témoin) n'affecte QUE le
+        texte du MP Discord envoyé à la personne — ses droits d'accès
+        réels au dossier restent ceux d'un tiers classique, quel que soit
+        le rôle choisi ici."""
         if user_id == self.owner_id or user_id in self.tiers_ids:
             return False
         db = get_db()
         tiers_ids = self.tiers_ids + [user_id]
         db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
         self.tiers_ids = tiers_ids
-        self._notifier_tiers_ajoute(user_id)
+        self._notifier_tiers_ajoute(user_id, role_ajout)
         return True
 
     def remove_tiers(self, user_id):
@@ -943,8 +948,11 @@ class Rapport:
         self.tiers_ids = tiers_ids
         return True
 
-    def _notifier_tiers_ajoute(self, user_id):
-        """Notifie (in-app + MP Discord) la personne ajoutée comme tiers."""
+    def _notifier_tiers_ajoute(self, user_id, role_ajout="Tiers"):
+        """Notifie (in-app + MP Discord) la personne ajoutée comme tiers.
+        Le message in-app reste générique ; seul le MP Discord précise en
+        tant que quoi (Tiers / Mis en cause / Témoin) elle a été ajoutée —
+        purement informatif, sans effet sur ses droits d'accès réels."""
         from app.models.notification import Notification  # import différé : évite un cycle d'import
         from app.models.user import User
         from app.notifications import build_embed, send_discord_dm
@@ -961,8 +969,8 @@ class Rapport:
         embed = build_embed(
             title=f"👥 Accès au dossier {self.reference}",
             description=(
-                "La commission t'a ajouté(e) à ce dossier en tant que tiers : "
-                "tu peux désormais le consulter."
+                f"La commission t'a ajouté(e) à ce dossier en tant que "
+                f"{role_ajout.lower()} : tu peux désormais le consulter."
             ),
             url=self._detail_url(),
         )
