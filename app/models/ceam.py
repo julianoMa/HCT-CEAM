@@ -570,12 +570,59 @@ class Rapport:
             percentages = {a: 0 for a in Rapport.AFFECTATIONS}
         return {"counts": counts, "total": total, "percentages": percentages}
 
+    # Clés courtes (sans espaces/accents) pour manipuler les classements
+    # facilement côté template — l'ordre définit aussi l'ordre des
+    # tranches dans le camembert.
+    _CLASSEMENT_KEYS = [
+        ("sans_suite", "CLASSEMENT_SANS_SUITE"),
+        ("avec_sanction", "CLASSEMENT_AVEC_SANCTION"),
+        ("sans_sanction", "CLASSEMENT_SANS_SANCTION"),
+        ("sans_objet", "CLASSEMENT_SANS_OBJET"),
+    ]
+
+    @classmethod
+    def _classement_breakdown(cls, rapports):
+        """Répartition des classements finaux, uniquement sur les
+        dossiers réellement clôturés (un dossier encore ouvert n'a pas de
+        classement définitif). Calcule aussi les bornes cumulées prêtes à
+        l'emploi pour dessiner un camembert CSS (conic-gradient) sans
+        calcul dans le template."""
+        keys = [(key, getattr(cls, attr_name)) for key, attr_name in cls._CLASSEMENT_KEYS]
+        counts = {key: 0 for key, _ in keys}
+        for r in rapports:
+            if r.status == cls.STATUS_CLOTURE and r.classement in dict(keys).values():
+                for key, value in keys:
+                    if r.classement == value:
+                        counts[key] += 1
+                        break
+        total = sum(counts.values())
+        percentages = {}
+        cumulative = {}
+        running = 0.0
+        for key, _ in keys:
+            pct = round(counts[key] / total * 100, 1) if total else 0
+            percentages[key] = pct
+            running += pct
+            cumulative[key] = round(running, 1)
+        # Éviter qu'un arrondi laisse la dernière tranche un chouïa avant
+        # 100% (visuellement, un tout petit trou dans le camembert).
+        if total:
+            last_key = keys[-1][0]
+            cumulative[last_key] = 100
+        return {
+            "labels": {key: getattr(cls, attr_name) for key, attr_name in cls._CLASSEMENT_KEYS},
+            "counts": counts,
+            "total": total,
+            "percentages": percentages,
+            "cumulative": cumulative,
+        }
+
     @classmethod
     def compute_statistiques(cls):
         """Calcule toutes les statistiques de la page Statistiques en un
         seul passage sur la collection (comptages par statut, répartition
-        TMC/NMH du plaignant et du mis en cause, évolution hebdomadaire
-        des dépôts)."""
+        TMC/NMH du plaignant et du mis en cause, répartition des
+        classements finaux, évolution hebdomadaire des dépôts)."""
         db = get_db()
         rapports = [cls._from_doc(d) for d in db.collection(COLLECTION).stream()]
 
@@ -585,6 +632,7 @@ class Rapport:
 
         plaignant_affectation = cls._affectation_breakdown(rapports, "plaignant_affectation")
         concerne_affectation = cls._affectation_breakdown(rapports, "concerne_affectation")
+        classement_breakdown = cls._classement_breakdown(rapports)
         weekly_chart = cls._build_weekly_chart(rapports)
 
         return {
@@ -596,6 +644,7 @@ class Rapport:
             "concerne_affectation_counts": concerne_affectation["counts"],
             "concerne_affectation_total": concerne_affectation["total"],
             "concerne_affectation_percentages": concerne_affectation["percentages"],
+            "classement_breakdown": classement_breakdown,
             "weekly_chart": weekly_chart,
         }
 

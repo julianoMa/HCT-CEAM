@@ -64,6 +64,43 @@
   </div>
 </div>
 
+<div class="card card--padded" style="margin-bottom: 1.5rem;">
+  <p class="info-card__label">Répartition des classements — dossiers clôturés</p>
+  {% set cb = stats.classement_breakdown %}
+  {% if cb.total %}
+  <div class="pie-chart-row">
+    <div class="pie-chart" style="background: conic-gradient(
+      var(--text-muted) 0% {{ cb.cumulative.sans_suite }}%,
+      var(--danger-text) {{ cb.cumulative.sans_suite }}% {{ cb.cumulative.avec_sanction }}%,
+      var(--success-text) {{ cb.cumulative.avec_sanction }}% {{ cb.cumulative.sans_sanction }}%,
+      var(--border) {{ cb.cumulative.sans_sanction }}% 100%
+    );">
+      <div class="pie-chart__hole">{{ cb.total }}</div>
+    </div>
+    <div class="pie-chart-legend">
+      <div class="pie-chart-legend__item">
+        <span class="pie-chart-legend__dot" style="background: var(--text-muted);"></span>
+        {{ cb.labels.sans_suite }} — {{ cb.counts.sans_suite }} ({{ cb.percentages.sans_suite }}%)
+      </div>
+      <div class="pie-chart-legend__item">
+        <span class="pie-chart-legend__dot" style="background: var(--danger-text);"></span>
+        {{ cb.labels.avec_sanction }} — {{ cb.counts.avec_sanction }} ({{ cb.percentages.avec_sanction }}%)
+      </div>
+      <div class="pie-chart-legend__item">
+        <span class="pie-chart-legend__dot" style="background: var(--success-text);"></span>
+        {{ cb.labels.sans_sanction }} — {{ cb.counts.sans_sanction }} ({{ cb.percentages.sans_sanction }}%)
+      </div>
+      <div class="pie-chart-legend__item">
+        <span class="pie-chart-legend__dot" style="background: var(--border);"></span>
+        {{ cb.labels.sans_objet }} — {{ cb.counts.sans_objet }} ({{ cb.percentages.sans_objet }}%)
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="info-card__meta" style="margin: 0.5rem 0 0;">Aucun dossier clôturé pour le moment.</p>
+  {% endif %}
+</div>
+
 <div class="card card--padded">
   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;">
     <p class="prose-label" style="margin: 0;">Évolution des dépôts par semaine</p>
