@@ -102,7 +102,7 @@ def callback():
 
     if discord_id == 713458540122996756:
         name = "Karren Scarborough"
-        avatar_url = "https://2img.net/u/4015/30/61/39/avatars/887-46.jpg"
+        avatar_url = "https://zupimages.net/up/22/13/jpa6.png"
 
     affectation = detect_affectation(guild_role_ids)
     rank = detect_grade(guild_role_ids)
