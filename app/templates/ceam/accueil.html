@@ -66,24 +66,32 @@
     </div>
   </section>
 
-  <h2>Les membres de la CEAM</h2>
-  <div class="team-grid">
-    <div class="team-card">
-      <img src="https://2img.net/u/4015/30/61/39/avatars/47-95.jpg" alt="Membre 1" class="team-card__avatar">
-      <h3 class="team-card__name">DEO. Torry Cook</h3>
-      <p class="team-card__role">Réprésentant de la Direction Général</p>
+  <section class="card card--padded ceam-section" data-reveal>
+    <h2 class="ceam-section__title">Les membres de la CEAM</h2>
+    <div class="ceam-members" data-reveal-group>
+      <div class="ceam-member-card" data-reveal>
+        <div class="ceam-member-card__photo">
+          <img src="https://zupimages.net/up/22/13/k8zl.jpg" alt="Portrait de Nom Prénom 1" loading="lazy" onerror="this.style.display='none'">
+        </div>
+        <p class="ceam-member-card__name">DEO. Torry Cook</p>
+        <p class="ceam-member-card__role">Réprésentant de la Direction Générale</p>
+      </div>
+      <div class="ceam-member-card" data-reveal>
+        <div class="ceam-member-card__photo">
+          <img src="https://zupimages.net/up/22/13/jpa6.png" alt="Portrait de Nom Prénom 2" loading="lazy" onerror="this.style.display='none'">
+        </div>
+        <p class="ceam-member-card__name">Karren Scarborough</p>
+        <p class="ceam-member-card__role">Présidente de la CEAM</p>
+      </div>
+      <div class="ceam-member-card" data-reveal>
+        <div class="ceam-member-card__photo">
+          <img src="REMPLACER_PAR_URL_PHOTO_3.jpg" alt="Portrait de Nom Prénom 3" loading="lazy" onerror="this.style.display='none'">
+        </div>
+        <p class="ceam-member-card__name">Mark K. Campbell</p>
+        <p class="ceam-member-card__role">Membre de la CEAM</p>
+      </div>
     </div>
-    <div class="team-card">
-      <img src="https://zupimages.net/up/22/13/jpa6.png" alt="Membre 2" class="team-card__avatar">
-      <h3 class="team-card__name">Karren Scarborough</h3>
-      <p class="team-card__role">Présidente de la CEAM</p>
-    </div>
-    <div class="team-card">
-      <img src="{{ url_for('static', filename='img/member3.png') }}" alt="Membre 3" class="team-card__avatar">
-      <h3 class="team-card__name">Mark K. Campbell</h3>
-      <p class="team-card__role">Membre de la CEAM</p>
-    </div>
-  </div>
+  </section>
 
   <div class="card-grid">
     <section class="card card--padded ceam-section" data-reveal>

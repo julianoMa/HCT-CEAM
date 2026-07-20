@@ -2016,50 +2016,6 @@ html {
   color: var(--text-secondary);
 }
 
-/* ── Section équipe CEAM ── */
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 2rem;
-  margin: 2rem 0;
-}
-
-.team-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 2rem 1.5rem;
-  text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.team-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.team-card__avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-bottom: 1rem;
-  border: 3px solid var(--accent);
-}
-
-.team-card__name {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.team-card__role {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
 /* ── Pagination ── */
 
 .pagination-bar {
@@ -3148,4 +3104,59 @@ button.is-submitting,
   color: var(--accent);
   font-weight: 700;
   font-size: 14px;
+}
+
+/* ── Membres de la CEAM (page Accueil) ── */
+
+.ceam-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+}
+
+.ceam-member-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 1.25rem 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.ceam-member-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.ceam-member-card__photo {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--accent-gradient);
+  margin-bottom: 6px;
+}
+
+.ceam-member-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ceam-member-card__name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.ceam-member-card__role {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0;
 }
