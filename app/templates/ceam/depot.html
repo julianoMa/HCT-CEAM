@@ -124,7 +124,8 @@
       </div>
       <div class="form-group" style="margin-bottom: 1.25rem;">
         {{ form.proof_files.label }}
-        {{ form.proof_files(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp", **{"data-compress-images": ""}) }}
+        {{ form.proof_files(multiple=True, accept=".pdf,image/png,image/jpeg,image/gif,image/webp", **{"data-compress-images": "", "data-pending-container": "preuves-preview"}) }}
+        <div id="preuves-preview" class="pending-attachments" data-pending-list></div>
         <p class="info-card__meta" style="margin-top: 4px;">PDF ou images, plusieurs fichiers possibles. Les images sont automatiquement compressées avant l'envoi si besoin (650 Ko max par fichier).</p>
       </div>
       <div class="modal__actions">

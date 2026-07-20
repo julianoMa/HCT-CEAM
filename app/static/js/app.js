@@ -298,8 +298,13 @@
   }
 
   function renderPendingAttachments(input) {
-    const composer = input.closest("form");
-    const container = composer?.querySelector("[data-pending-attachments]");
+    // 1. Cherche d'abord un conteneur ciblé explicitement par data-pending-container
+    // 2. Sinon, fallback sur l'ancien comportement (dans le formulaire le plus proche)
+    const containerId = input.getAttribute("data-pending-container");
+    const container = containerId 
+      ? document.getElementById(containerId) 
+      : input.closest("form")?.querySelector("[data-pending-attachments]");
+      
     if (!container) return;
 
     container.innerHTML = "";
@@ -310,14 +315,14 @@
       const card = document.createElement("div");
       card.className = "attachment-card attachment-card--pending";
       card.innerHTML = `
-        <div class="attachment-card__icon">${fileIconSvg(isPdf)}</div>
+        <div class="attachment-card__icon">
+          ${fileIconSvg(isPdf)}
+        </div>
         <div class="attachment-card__info">
           <span class="attachment-card__name">${file.name}</span>
           <span class="attachment-card__meta">${isPdf ? "PDF" : "Image"} · ${sizeKo} Ko</span>
         </div>
-        <button type="button" class="attachment-card__remove" aria-label="Retirer ce fichier" data-remove-index="${index}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
+        <button type="button" class="attachment-card__remove" data-remove-index="${index}" title="Retirer le fichier">×</button>
       `;
       container.appendChild(card);
     });
