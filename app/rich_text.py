@@ -71,3 +71,80 @@ def _render_url(url):
         )
 
     return f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer">{safe_url}</a>'
+
+
+# ── Markdown léger pour la messagerie (Échanges) ──
+# Volontairement limité à quelques syntaxes simples et sûres, pas un vrai
+# moteur Markdown complet : gras, italique, code en ligne, et listes à
+# puces. Le texte est TOUJOURS échappé avant toute substitution — aucun
+# HTML fourni par l'utilisateur n'est jamais interprété tel quel.
+_CHAT_CODE_RE = re.compile(r'`([^`\n]+?)`')
+_CHAT_BOLD_RE = re.compile(r'\*\*(.+?)\*\*')
+_CHAT_ITALIC_RE = re.compile(r'(?<!\*)\*([^*\n]+?)\*(?!\*)')
+_CHAT_BULLET_LINE_RE = re.compile(r'^[-*] +(.+)$')
+
+
+def _apply_chat_markdown_inline(escaped_text):
+    """Applique gras/italique/code sur un texte DÉJÀ échappé. L'ordre
+    (code, puis gras, puis italique) évite qu'un `**gras**` soit
+    partiellement confondu avec de l'italique."""
+    escaped_text = _CHAT_CODE_RE.sub(lambda m: f"<code>{m.group(1)}</code>", escaped_text)
+    escaped_text = _CHAT_BOLD_RE.sub(lambda m: f"<strong>{m.group(1)}</strong>", escaped_text)
+    escaped_text = _CHAT_ITALIC_RE.sub(lambda m: f"<em>{m.group(1)}</em>", escaped_text)
+    return escaped_text
+
+
+def render_chat_markdown(raw_text):
+    """Comme render_rich_text (liens/images/YouTube auto-détectés), mais
+    avec en plus un markdown léger : **gras**, *italique*, `code`, et les
+    lignes commençant par "- " ou "* " transformées en liste à puces.
+    Réservé à l'espace d'échanges — le reste du site (règlement,
+    description, preuves) continue d'utiliser render_rich_text tel quel."""
+    if not raw_text:
+        return Markup("")
+
+    lines = raw_text.split("\n")
+    rendered_lines = []
+    in_list = False
+
+    for line in lines:
+        bullet_match = _CHAT_BULLET_LINE_RE.match(line)
+        if bullet_match:
+            if not in_list:
+                rendered_lines.append("<ul class='chat-markdown-list'>")
+                in_list = True
+            rendered_lines.append(f"<li>{_render_line_with_links(bullet_match.group(1))}</li>")
+            continue
+        if in_list:
+            rendered_lines.append("</ul>")
+            in_list = False
+        rendered_lines.append(_render_line_with_links(line))
+
+    if in_list:
+        rendered_lines.append("</ul>")
+
+    return Markup("\n".join(rendered_lines))
+
+
+def _render_line_with_links(raw_line):
+    """Rend une seule ligne : découpe autour des URL (comme
+    render_rich_text), applique le markdown léger sur les segments de
+    texte, et laisse les URL gérées par _render_url tel quel."""
+    parts = []
+    last_end = 0
+    for m in URL_RE.finditer(raw_line):
+        segment = str(escape(raw_line[last_end:m.start()]))
+        parts.append(_apply_chat_markdown_inline(segment))
+
+        raw_url = m.group(1)
+        trimmed = raw_url.rstrip(_TRAILING_PUNCTUATION)
+        trailing = raw_url[len(trimmed):]
+        parts.append(_render_url(trimmed))
+        if trailing:
+            parts.append(str(escape(trailing)))
+
+        last_end = m.end()
+
+    tail = str(escape(raw_line[last_end:]))
+    parts.append(_apply_chat_markdown_inline(tail))
+    return "".join(parts)

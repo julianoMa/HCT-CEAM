@@ -3,7 +3,7 @@ from flask import Flask
 
 from app.config import Config
 from app.extensions import csrf, init_firestore, login_manager
-from app.rich_text import render_rich_text
+from app.rich_text import render_chat_markdown, render_rich_text
 from app.startup_check import run_startup_checks
 
 load_dotenv()
@@ -20,6 +20,7 @@ def create_app(config_class=Config):
     run_startup_checks(app)
 
     app.jinja_env.filters["rich_text"] = render_rich_text
+    app.jinja_env.filters["chat_markdown"] = render_chat_markdown
 
     from app.models.user import User
 

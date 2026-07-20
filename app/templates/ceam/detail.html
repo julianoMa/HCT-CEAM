@@ -197,7 +197,7 @@
                 {% if r.type_label and r.type_label != "Message" %}<span class="badge-type">{{ r.type_label }}</span>{% endif %}
                 {% if is_new %}<span class="chat-message__new">Nouveau</span>{% endif %}
               </div>
-              <div class="prose prose--clear rich-text">{{ r.content | rich_text }}</div>
+              <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}</div>
               {% if r.attachments %}
               <div class="reponse-attachments">
                 {% for a in r.attachments %}
@@ -241,6 +241,7 @@
           <input type="hidden" name="action" value="message">
           <input type="hidden" name="thread" value="{{ conv.key }}">
           {{ message_form.content(rows=2, placeholder="Écrire un message…") }}
+          <p class="chat-panel__markdown-hint">**gras**, *italique*, `code`, "- " pour une liste</p>
           <div class="chat-panel__pending-attachments" data-pending-attachments></div>
           <div class="chat-panel__composer-actions">
             <label class="btn-ghost btn-sm chat-panel__attach-label">
