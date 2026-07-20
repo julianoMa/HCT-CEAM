@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from google.api_core.exceptions import FailedPrecondition
-from google.cloud.firestore_v1 import FieldFilter
+from google.cloud.firestore_v1 import ArrayUnion, FieldFilter
 
 from app.extensions import get_db
 from app.firestore_utils import next_id
@@ -845,8 +845,14 @@ class Rapport:
             "read_by": [author_id] if author_id is not None else [],
             "visibility": visibility,
         }
+        # ArrayUnion ajoute cet unique message côté serveur Firestore, sans
+        # avoir besoin de renvoyer tout l'historique existant à chaque
+        # envoi — contrairement à un .update({"reponses": ancienne_liste
+        # + [nouveau]}), qui grossissait (et ralentissait) à mesure que
+        # la conversation s'allongeait, puisqu'il fallait retransmettre
+        # TOUS les messages précédents rien que pour en ajouter un seul.
+        db.collection(COLLECTION).document(str(self.id)).update({"reponses": ArrayUnion([reponse])})
         reponses = self.reponses + [reponse]
-        db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
         self.reponses = reponses
         self._notifier_message(reponse, author_id, author_is_ceam)
         AuditLog.record(
