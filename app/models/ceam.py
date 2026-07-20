@@ -128,7 +128,7 @@ class Rapport:
                  event_date, event_hour, location, witness, description, proof,
                  send_date, owner_id, status, note, reponses=None, archived=False, status_history=None,
                  proof_attachments=None, tiers_ids=None, tiers_roles=None, messages_locked=False,
-                 classement=None, decision_rendered=False):
+                 classement=None, decision_rendered=False, last_read=None):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
         self.plaignant_first_name = plaignant_first_name
@@ -178,6 +178,15 @@ class Rapport:
         # clôture, sans changer le statut tant que la clôture n'est pas
         # confirmée.
         self.decision_rendered = decision_rendered
+        # Jusqu'où chaque personne a lu chaque fil : {thread_key (str):
+        # {user_id (str): horodatage ISO du dernier message vu}}. Séparé
+        # des messages eux-mêmes (pas un champ "read_by" sur chaque
+        # élément du tableau `reponses`) précisément pour pouvoir marquer
+        # comme lu SANS avoir à réécrire tout l'historique — Firestore
+        # permet de mettre à jour un champ imbriqué précis
+        # ("last_read.everyone.5") sans toucher au reste du document,
+        # contrairement à un élément à l'intérieur d'un tableau.
+        self.last_read = last_read or {}
 
     # --- Confort d'affichage ---
     @property
@@ -221,7 +230,6 @@ class Rapport:
                 "sent_at_time": format_utc(sent_at, "%H:%M"),
                 "sent_at_raw": sent_at,
                 "attachments": r.get("attachments") or [],
-                "read_by": r.get("read_by") or [],
                 "visibility": r.get("visibility", "everyone"),
             })
         return affichage
@@ -272,19 +280,22 @@ class Rapport:
         formulaire pour écrire dans ce fil précis.
 
         IMPORTANT : à appeler AVANT mark_messages_read — le marquage "lu"
-        est déterminé ici via read_by, donc si les messages sont déjà
-        marqués lus pour cette personne avant cet appel, plus aucun
-        message n'apparaîtra jamais comme "Nouveau"."""
+        avance last_read jusqu'à maintenant, donc si c'est déjà fait
+        avant cet appel, plus aucun message n'apparaîtra jamais comme
+        "Nouveau"."""
         all_messages = self.reponses_affichage
+        user_key = str(user_id)
 
         def build_thread(key, label):
+            thread_key = "everyone" if key == "everyone" else str(key)
+            last_read_ts = (self.last_read.get(thread_key) or {}).get(user_key, "")
             if key == "everyone":
                 messages = [m for m in all_messages if m["visibility"] == "everyone"]
             else:
                 messages = [m for m in all_messages if m["visibility"] == key]
             unread = 0
             for m in messages:
-                m["is_new"] = user_id not in (m.get("read_by") or []) and m["author_id"] != user_id
+                m["is_new"] = m["sent_at_raw"] > last_read_ts and m["author_id"] != user_id
                 if m["is_new"]:
                     unread += 1
             groups = _group_chat_messages(messages, group_gap_minutes)
@@ -375,6 +386,7 @@ class Rapport:
             "messages_locked": self.messages_locked,
             "classement": self.classement,
             "decision_rendered": self.decision_rendered,
+            "last_read": self.last_read,
         }
 
     @classmethod
@@ -393,6 +405,7 @@ class Rapport:
         data.setdefault("messages_locked", False)
         data.setdefault("classement", None)
         data.setdefault("decision_rendered", False)
+        data.setdefault("last_read", {})
         return cls(id=int(doc.id), **data)
 
     # --- Accès Firestore ---
@@ -833,25 +846,32 @@ class Rapport:
         from app.models.notification import Notification  # idem
 
         db = get_db()
+        sent_at = datetime.utcnow().isoformat(timespec="minutes")
         reponse = {
             "type": type_,
             "content": content,
             "author_name": author_name,
             "author_rank": author_rank,
             "author_id": author_id,
-            "sent_at": datetime.utcnow().isoformat(timespec="minutes"),
+            "sent_at": sent_at,
             "attachments": attachments or [],
-            # L'auteur a évidemment déjà "lu" son propre message.
-            "read_by": [author_id] if author_id is not None else [],
             "visibility": visibility,
         }
+        update_payload = {"reponses": ArrayUnion([reponse])}
+        if author_id is not None:
+            # L'auteur a évidemment déjà "lu" jusqu'à son propre message —
+            # on avance directement son repère de lecture sur CE fil, dans
+            # la même écriture Firestore (pas un aller-retour de plus).
+            thread_key = "everyone" if visibility == "everyone" else str(visibility)
+            update_payload[f"last_read.{thread_key}.{author_id}"] = sent_at
+            self.last_read.setdefault(thread_key, {})[str(author_id)] = sent_at
         # ArrayUnion ajoute cet unique message côté serveur Firestore, sans
         # avoir besoin de renvoyer tout l'historique existant à chaque
         # envoi — contrairement à un .update({"reponses": ancienne_liste
         # + [nouveau]}), qui grossissait (et ralentissait) à mesure que
         # la conversation s'allongeait, puisqu'il fallait retransmettre
         # TOUS les messages précédents rien que pour en ajouter un seul.
-        db.collection(COLLECTION).document(str(self.id)).update({"reponses": ArrayUnion([reponse])})
+        db.collection(COLLECTION).document(str(self.id)).update(update_payload)
         reponses = self.reponses + [reponse]
         self.reponses = reponses
         self._notifier_message(reponse, author_id, author_is_ceam)
@@ -889,30 +909,47 @@ class Rapport:
         return reponse
 
     def mark_messages_read(self, user_id, is_ceam_member=False):
-        """Marque comme lus, pour cette personne, tous les messages
-        qu'elle peut réellement voir (respecte la confidentialité —
-        inutile et incorrect de marquer "lu" un message qu'elle ne voit
-        même pas)."""
-        changed = False
-        reponses = []
+        """Avance, pour cette personne, son repère de lecture sur chaque
+        fil qu'elle peut réellement voir, jusqu'au dernier message de ce
+        fil précis. Écrit uniquement les champs last_read.<fil>.<user_id>
+        qui avancent réellement (notation par points Firestore) — jamais
+        tout le tableau `reponses`, peu importe sa taille."""
+        user_key = str(user_id)
+        latest_by_thread = {}
         for r in self.reponses:
-            read_by = r.get("read_by") or []
-            visible = self._is_reponse_visible_to(r, user_id, is_ceam_member)
-            if visible and user_id not in read_by:
-                read_by = read_by + [user_id]
-                changed = True
-            reponses.append({**r, "read_by": read_by})
-        if changed:
+            if not self._is_reponse_visible_to(r, user_id, is_ceam_member):
+                continue
+            visibility = r.get("visibility", "everyone")
+            thread_key = "everyone" if visibility == "everyone" else str(visibility)
+            sent_at = r.get("sent_at", "")
+            if sent_at > latest_by_thread.get(thread_key, ""):
+                latest_by_thread[thread_key] = sent_at
+
+        update_payload = {}
+        for thread_key, latest_sent_at in latest_by_thread.items():
+            current = (self.last_read.get(thread_key) or {}).get(user_key, "")
+            if latest_sent_at > current:
+                update_payload[f"last_read.{thread_key}.{user_key}"] = latest_sent_at
+                self.last_read.setdefault(thread_key, {})[user_key] = latest_sent_at
+
+        if update_payload:
             db = get_db()
-            db.collection(COLLECTION).document(str(self.id)).update({"reponses": reponses})
-            self.reponses = reponses
+            db.collection(COLLECTION).document(str(self.id)).update(update_payload)
 
     def unread_messages_count(self, user_id, is_ceam_member=False):
-        return sum(
-            1 for r in self.reponses
-            if self._is_reponse_visible_to(r, user_id, is_ceam_member)
-            and user_id not in (r.get("read_by") or [])
-        )
+        user_key = str(user_id)
+        count = 0
+        for r in self.reponses:
+            if not self._is_reponse_visible_to(r, user_id, is_ceam_member):
+                continue
+            if r.get("author_id") == user_id:
+                continue
+            visibility = r.get("visibility", "everyone")
+            thread_key = "everyone" if visibility == "everyone" else str(visibility)
+            last_read_ts = (self.last_read.get(thread_key) or {}).get(user_key, "")
+            if r.get("sent_at", "") > last_read_ts:
+                count += 1
+        return count
 
     def _notifier_nouveau_rapport(self):
         """MP à tous les membres de la commission lors du dépôt d'un rapport."""
