@@ -205,7 +205,8 @@
               <span>{{ (group.author_name[0] | upper) if group.author_name else "?" }}</span>
               {% endif %}
             </div>
-            <div class="chat-message__bubble">
+            {% set total_length = group.entries | map(attribute='content') | join | length %}
+              <div class="chat-message__bubble {% if total_length < 20 %}chat-message__bubble--short{% else %}chat-message__bubble--long{% endif %}">
               <div class="chat-message__header">
                 <span class="chat-message__author">{{ group.author_name }}</span>
                 <span class="chat-message__rank">{{ group.author_rank }}</span>

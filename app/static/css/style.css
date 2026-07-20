@@ -2626,9 +2626,17 @@ button.is-submitting,
 
 .chat-message__bubble {
   width: 640px;
+  max-width: 100%;
   background: var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+  box-sizing: border-box;
+  word-wrap: break-word; 
+}
+
+.chat-message__bubble--short {
+  width: fit-content;
+  max-width: 640px;
 }
 
 .chat-message--mine .chat-message__bubble {
