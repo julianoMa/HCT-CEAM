@@ -9,6 +9,38 @@ from app.timezone_utils import format_utc
 COLLECTION = "ceam"
 
 
+def _group_chat_messages(messages, gap_minutes=10):
+    """Regroupe des messages consécutifs du même auteur, espacés de moins
+    de `gap_minutes` minutes entre eux, en un seul bloc visuel — comme le
+    fait Discord/Slack. Un bloc = un seul en-tête (nom/avatar), un seul
+    horodatage affiché à la fin, plusieurs contenus empilés dans la même
+    carte. Si l'écart dépasse `gap_minutes`, ou que l'auteur change, un
+    nouveau bloc démarre."""
+    groups = []
+    for m in messages:
+        merged = False
+        if groups:
+            last_group = groups[-1]
+            same_author = m["author_id"] is not None and m["author_id"] == last_group["author_id"]
+            if same_author:
+                try:
+                    t1 = datetime.fromisoformat(last_group["entries"][-1]["sent_at_raw"])
+                    t2 = datetime.fromisoformat(m["sent_at_raw"])
+                    merged = 0 <= (t2 - t1).total_seconds() <= gap_minutes * 60
+                except (ValueError, TypeError):
+                    merged = False
+        if merged:
+            groups[-1]["entries"].append(m)
+        else:
+            groups.append({
+                "author_id": m["author_id"],
+                "author_name": m["author_name"],
+                "author_rank": m["author_rank"],
+                "entries": [m],
+            })
+    return groups
+
+
 class Rapport:
     # Statuts (schéma : status de 0 à 6)
     STATUS_NOUVEAU = 0
@@ -164,6 +196,7 @@ class Rapport:
                 "author_rank": r.get("author_rank", ""),
                 "author_id": r.get("author_id"),
                 "sent_at_fr": sent_at_fr,
+                "sent_at_raw": sent_at,
                 "attachments": r.get("attachments") or [],
                 "read_by": r.get("read_by") or [],
                 "visibility": r.get("visibility", "everyone"),
@@ -199,7 +232,7 @@ class Rapport:
             )
         ]
 
-    def conversations_for(self, user_id, is_ceam_member, owner_user=None, tiers_users=None):
+    def conversations_for(self, user_id, is_ceam_member, owner_user=None, tiers_users=None, group_gap_minutes=10):
         """Regroupe les messages en fils de discussion distincts, adaptés
         à qui regarde :
         - un membre CEAM voit le fil général + un fil privé par
@@ -207,10 +240,18 @@ class Rapport:
           pouvoir en démarrer un ;
         - un participant externe (déclarant/tiers) ne voit que le fil
           général + SON PROPRE fil privé avec la commission.
-        Chaque fil est un dict : {key, label, messages, unread_count}.
+        Chaque fil est un dict : {key, label, messages, groups, unread_count}.
+        `messages` est la liste brute (chronologique) ; `groups` la même
+        liste regroupée par blocs visuels (même auteur, moins de
+        `group_gap_minutes` minutes d'écart — comme Discord/Slack).
         `key` vaut "everyone" ou l'ID (int) du participant externe
         propriétaire du fil — c'est aussi la valeur à soumettre dans le
-        formulaire pour écrire dans ce fil précis."""
+        formulaire pour écrire dans ce fil précis.
+
+        IMPORTANT : à appeler AVANT mark_messages_read — le marquage "lu"
+        est déterminé ici via read_by, donc si les messages sont déjà
+        marqués lus pour cette personne avant cet appel, plus aucun
+        message n'apparaîtra jamais comme "Nouveau"."""
         all_messages = self.reponses_affichage
 
         def build_thread(key, label):
@@ -218,8 +259,13 @@ class Rapport:
                 messages = [m for m in all_messages if m["visibility"] == "everyone"]
             else:
                 messages = [m for m in all_messages if m["visibility"] == key]
-            unread = sum(1 for m in messages if user_id not in (m.get("read_by") or []))
-            return {"key": key, "label": label, "messages": messages, "unread_count": unread}
+            unread = 0
+            for m in messages:
+                m["is_new"] = user_id not in (m.get("read_by") or []) and m["author_id"] != user_id
+                if m["is_new"]:
+                    unread += 1
+            groups = _group_chat_messages(messages, group_gap_minutes)
+            return {"key": key, "label": label, "messages": messages, "groups": groups, "unread_count": unread}
 
         threads = [build_thread("everyone", "Tout le monde")]
 

@@ -210,13 +210,15 @@ def detail(rapport_id):
         excluded_ids = {rapport.owner_id, *rapport.tiers_ids}
         available_users = [u for u in User.list_all() if u.id not in excluded_ids]
 
-    # Le compteur de messages non lus est calculé AVANT de les marquer
-    # comme lus juste après, pour que les badges reflètent bien "combien
-    # de nouveaux messages depuis ta dernière visite" au moment du
-    # chargement de la page.
+    # Le compteur de messages non lus, et le marquage individuel de
+    # chaque message comme "nouveau" pour cette personne, sont calculés
+    # AVANT de tout marquer comme lu juste après — conversations_for lit
+    # read_by pour savoir qui a déjà vu quoi, donc l'appeler après
+    # mark_messages_read ferait que plus rien n'apparaîtrait jamais comme
+    # "Nouveau" (tout serait déjà marqué lu par ce moment-là).
     unread_messages_count = rapport.unread_messages_count(current_user.id, is_ceam_member)
-    rapport.mark_messages_read(current_user.id, is_ceam_member)
     conversations = rapport.conversations_for(current_user.id, is_ceam_member, owner_user, tiers_users)
+    rapport.mark_messages_read(current_user.id, is_ceam_member)
 
     # Avatars des auteurs des messages (une seule recherche par auteur
     # distinct, pas par message) — la commission a déjà owner_user et

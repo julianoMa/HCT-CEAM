@@ -190,57 +190,63 @@
       {% for conv in conversations %}
       <div class="chat-conversation-panel {{ 'is-active' if loop.first }}" data-conversation-panel="{{ conv.key }}">
         <div class="chat-panel__messages" data-chat-scroll>
-          {% if conv.messages %}
-          {% set total_messages = conv.messages | length %}
-          {% for r in conv.messages %}
-          {% set is_mine = (r.author_id == current_user.id) %}
-          {% set is_new = (loop.index0 >= total_messages - conv.unread_count) and not is_mine %}
+          {% if conv.groups %}
+          {% for group in conv.groups %}
+          {% set is_mine = (group.author_id == current_user.id) %}
           <div class="chat-message {{ 'chat-message--mine' if is_mine }}">
             <div class="chat-message__avatar">
-              {% set avatar_url = author_avatars.get(r.author_id) %}
+              {% set avatar_url = author_avatars.get(group.author_id) %}
               {% if avatar_url %}
-              <img src="{{ avatar_url }}" alt="{{ r.author_name }}" referrerpolicy="no-referrer">
+              <img src="{{ avatar_url }}" alt="{{ group.author_name }}" referrerpolicy="no-referrer">
               {% else %}
-              <span>{{ (r.author_name[0] | upper) if r.author_name else "?" }}</span>
+              <span>{{ (group.author_name[0] | upper) if group.author_name else "?" }}</span>
               {% endif %}
             </div>
             <div class="chat-message__bubble">
               <div class="chat-message__header">
-                <span class="chat-message__author">{{ r.author_name }}</span>
-                <span class="chat-message__rank">{{ r.author_rank }}</span>
-                {% if r.type_label and r.type_label != "Message" %}<span class="badge-type">{{ r.type_label }}</span>{% endif %}
-                {% if is_new %}<span class="chat-message__new">Nouveau</span>{% endif %}
+                <span class="chat-message__author">{{ group.author_name }}</span>
+                <span class="chat-message__rank">{{ group.author_rank }}</span>
               </div>
-              <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}</div>
-              {% if r.attachments %}
-              <div class="reponse-attachments">
-                {% for a in r.attachments %}
-                <button
-                  type="button"
-                  class="attachment-card"
-                  data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
-                  data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
-                  data-preview-name="{{ a.name }}"
-                >
-                  <div class="attachment-card__icon">
-                    {% if a.content_type == 'application/pdf' %}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
-                    {% else %}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                    {% endif %}
-                  </div>
-                  <div class="attachment-card__info">
-                    <span class="attachment-card__name">{{ a.name }}</span>
-                    <span class="attachment-card__meta">
-                      {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
-                      {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
-                    </span>
-                  </div>
-                </button>
-                {% endfor %}
+              {% for r in group.entries %}
+              <div class="chat-message__item {{ 'chat-message__item--continued' if not loop.first }}">
+                {% if (r.type_label and r.type_label != "Message") or r.is_new %}
+                <div class="chat-message__item-badges">
+                  {% if r.type_label and r.type_label != "Message" %}<span class="badge-type">{{ r.type_label }}</span>{% endif %}
+                  {% if r.is_new %}<span class="chat-message__new">Nouveau</span>{% endif %}
+                </div>
+                {% endif %}
+                <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}</div>
+                {% if r.attachments %}
+                <div class="reponse-attachments">
+                  {% for a in r.attachments %}
+                  <button
+                    type="button"
+                    class="attachment-card"
+                    data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
+                    data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
+                    data-preview-name="{{ a.name }}"
+                  >
+                    <div class="attachment-card__icon">
+                      {% if a.content_type == 'application/pdf' %}
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                      {% else %}
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                      {% endif %}
+                    </div>
+                    <div class="attachment-card__info">
+                      <span class="attachment-card__name">{{ a.name }}</span>
+                      <span class="attachment-card__meta">
+                        {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
+                        {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
+                      </span>
+                    </div>
+                  </button>
+                  {% endfor %}
+                </div>
+                {% endif %}
               </div>
-              {% endif %}
-              <span class="chat-message__time">{{ r.sent_at_fr }}</span>
+              {% endfor %}
+              <span class="chat-message__time">{{ group.entries[-1].sent_at_fr }}</span>
             </div>
           </div>
           {% endfor %}
