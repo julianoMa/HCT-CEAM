@@ -577,4 +577,20 @@
       btn.addEventListener("click", () => activateConversation(btn.dataset.conversationTrigger));
     });
   }
+
+  // ── Envoyer un message avec Ctrl+Entrée (Cmd+Entrée sur Mac) ──
+  document.querySelectorAll(".chat-panel__composer textarea").forEach((textarea) => {
+    textarea.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        const form = textarea.closest("form");
+        // Ne rien faire si le formulaire est déjà en cours d'envoi (le
+        // bouton est alors désactivé par la protection anti double-clic).
+        const submitBtn = form?.querySelector('button[type="submit"]');
+        if (form && !submitBtn?.disabled) {
+          form.requestSubmit ? form.requestSubmit() : form.submit();
+        }
+      }
+    });
+  });
 })();

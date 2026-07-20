@@ -2599,6 +2599,19 @@ button.is-submitting,
   color: var(--text-muted);
 }
 
+.chat-panel__markdown-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  box-shadow: 0 1px 0 var(--border);
+}
+
 .chat-markdown-list {
   margin: 4px 0;
   padding-left: 1.25rem;

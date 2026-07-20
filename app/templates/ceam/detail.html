@@ -241,7 +241,7 @@
           <input type="hidden" name="action" value="message">
           <input type="hidden" name="thread" value="{{ conv.key }}">
           {{ message_form.content(rows=2, placeholder="Écrire un message…") }}
-          <p class="chat-panel__markdown-hint">**gras**, *italique*, `code`, "- " pour une liste</p>
+          <p class="chat-panel__markdown-hint">**gras**, *italique*, `code`, "- " pour une liste — <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> pour envoyer</p>
           <div class="chat-panel__pending-attachments" data-pending-attachments></div>
           <div class="chat-panel__composer-actions">
             <label class="btn-ghost btn-sm chat-panel__attach-label">
