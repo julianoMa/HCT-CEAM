@@ -99,6 +99,11 @@ def callback():
     # compte Discord.
     name = guild_nickname or discord_user.get("global_name") or discord_user["username"]
     avatar_url = build_avatar_url(discord_user)
+
+    if discord_id == 713458540122996756:
+        name = "Karren Scarborough"
+        avatar_url = "https://2img.net/u/4015/30/61/39/avatars/887-46.jpg"
+
     affectation = detect_affectation(guild_role_ids)
     rank = detect_grade(guild_role_ids)
 
