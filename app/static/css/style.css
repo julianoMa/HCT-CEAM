@@ -839,7 +839,8 @@ a:hover { color: var(--accent-hover); }
 .status-2 { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); } /* En cours d'instruction */
 .status-3 { background: #ffedd5; color: #9a3412; border-color: #fdba74; } /* Traitement suspendu */
 .status-4 { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); } /* Non recevable */
-.status-5 { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); } /* Clôturé */
+.status-5 { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); } /* Décision rendue */
+.status-6 { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); } /* Clôturé */
 
 /* ── Filters ── */
 
