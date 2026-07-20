@@ -14,6 +14,11 @@ from zoneinfo import ZoneInfo
 
 APP_TIMEZONE = ZoneInfo("Europe/Paris")
 
+_MOIS_FR = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+]
+
 
 def format_utc(iso_string, fmt="%d/%m/%Y à %H:%M"):
     """Parse une date ISO stockée en UTC (naïve, ex: '2026-01-15T14:30')
@@ -31,3 +36,32 @@ def format_utc(iso_string, fmt="%d/%m/%Y à %H:%M"):
         return local_dt.strftime(fmt)
     except (ValueError, TypeError):
         return iso_string
+
+
+def local_date(iso_string):
+    """Retourne la date (jour civil, fuseau Europe/Paris) correspondant à
+    cet horodatage UTC — utile pour comparer si deux évènements ont eu
+    lieu le même jour côté utilisateur, DST géré automatiquement."""
+    dt = datetime.fromisoformat(iso_string)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(APP_TIMEZONE).date()
+
+
+def chat_date_label(iso_string):
+    """Libellé relatif d'une date pour les séparateurs du chat :
+    "Aujourd'hui", "Hier", ou "12 janvier" (avec l'année en plus si ce
+    n'est pas l'année en cours)."""
+    day = local_date(iso_string)
+    today = datetime.now(APP_TIMEZONE).date()
+    delta_days = (today - day).days
+
+    if delta_days == 0:
+        return "Aujourd'hui"
+    if delta_days == 1:
+        return "Hier"
+
+    label = f"{day.day} {_MOIS_FR[day.month - 1]}"
+    if day.year != today.year:
+        label += f" {day.year}"
+    return label

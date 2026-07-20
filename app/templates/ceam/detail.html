@@ -192,6 +192,9 @@
         <div class="chat-panel__messages" data-chat-scroll>
           {% if conv.groups %}
           {% for group in conv.groups %}
+          {% if group.date_label %}
+          <div class="chat-date-separator"><span>{{ group.date_label }}</span></div>
+          {% endif %}
           {% set is_mine = (group.author_id == current_user.id) %}
           <div class="chat-message {{ 'chat-message--mine' if is_mine }}">
             <div class="chat-message__avatar">
@@ -246,7 +249,7 @@
                 {% endif %}
               </div>
               {% endfor %}
-              <span class="chat-message__time">{{ group.entries[-1].sent_at_fr }}</span>
+              <span class="chat-message__time">{{ group.entries[-1].sent_at_time }}</span>
             </div>
           </div>
           {% endfor %}

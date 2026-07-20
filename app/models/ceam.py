@@ -4,7 +4,7 @@ from google.cloud.firestore_v1 import FieldFilter
 
 from app.extensions import get_db
 from app.firestore_utils import next_id
-from app.timezone_utils import format_utc
+from app.timezone_utils import chat_date_label, format_utc, local_date
 
 COLLECTION = "ceam"
 
@@ -38,6 +38,24 @@ def _group_chat_messages(messages, gap_minutes=10):
                 "author_rank": m["author_rank"],
                 "entries": [m],
             })
+
+    # Séparateur de date : un libellé de jour ("Aujourd'hui", "Hier",
+    # "12 janvier") au-dessus du premier bloc de chaque nouvelle journée
+    # civile (fuseau Europe/Paris) — jamais répété pour les blocs suivants
+    # du même jour, même s'ils appartiennent à un auteur différent.
+    last_date_key = None
+    for group in groups:
+        first_msg = group["entries"][0]
+        try:
+            date_key = local_date(first_msg["sent_at_raw"])
+        except (ValueError, TypeError):
+            date_key = None
+        if date_key is not None and date_key != last_date_key:
+            group["date_label"] = chat_date_label(first_msg["sent_at_raw"])
+            last_date_key = date_key
+        else:
+            group["date_label"] = None
+
     return groups
 
 
@@ -196,6 +214,7 @@ class Rapport:
                 "author_rank": r.get("author_rank", ""),
                 "author_id": r.get("author_id"),
                 "sent_at_fr": sent_at_fr,
+                "sent_at_time": format_utc(sent_at, "%H:%M"),
                 "sent_at_raw": sent_at,
                 "attachments": r.get("attachments") or [],
                 "read_by": r.get("read_by") or [],
