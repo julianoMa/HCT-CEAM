@@ -1807,10 +1807,9 @@ html {
 .ceam-hero__pattern {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.28) 1.5px, transparent 1.5px);
-  background-size: 24px 24px;
-  mask-image: radial-gradient(ellipse 90% 90% at 50% 20%, #000 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 90% 90% at 50% 20%, #000 40%, transparent 100%);
+  background-image: linear-gradient(var(--accent), rgba(0, 102, 204, 0.4)),
+  url("https://www.upload.ee/image/19562791/440b84cc-e487-4a1d-9e6d-0516b0512954.png"); /* radial-gradient(rgba(255, 255, 255, 0.28) 1.5px, transparent 1.5px) */
+  background-size: cover;
 }
 
 .ceam-hero__logo-wrap {
@@ -1843,7 +1842,7 @@ html {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent-contrast, #fff);
+  color: #fff;  
   opacity: 0.85;
   margin: 0 0 0.75rem;
 }
@@ -1852,14 +1851,14 @@ html {
   font-size: clamp(1.6rem, 4vw, 2.25rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--accent-contrast, #fff);
+  color: #fff;
   margin: 0 0 1rem;
   line-height: 1.25;
 }
 
 .ceam-hero__subtitle {
   font-size: 15px;
-  color: var(--accent-contrast, #fff);
+  color: #fff;
   opacity: 0.9;
   margin: 0;
   line-height: 1.6;
