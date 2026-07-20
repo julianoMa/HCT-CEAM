@@ -196,6 +196,14 @@
           {% set is_mine = (r.author_id == current_user.id) %}
           {% set is_new = (loop.index0 >= total_messages - conv.unread_count) and not is_mine %}
           <div class="chat-message {{ 'chat-message--mine' if is_mine }}">
+            <div class="chat-message__avatar">
+              {% set avatar_url = author_avatars.get(r.author_id) %}
+              {% if avatar_url %}
+              <img src="{{ avatar_url }}" alt="{{ r.author_name }}" referrerpolicy="no-referrer">
+              {% else %}
+              <span>{{ (r.author_name[0] | upper) if r.author_name else "?" }}</span>
+              {% endif %}
+            </div>
             <div class="chat-message__bubble">
               <div class="chat-message__header">
                 <span class="chat-message__author">{{ r.author_name }}</span>

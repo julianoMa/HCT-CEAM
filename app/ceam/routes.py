@@ -218,6 +218,21 @@ def detail(rapport_id):
     rapport.mark_messages_read(current_user.id, is_ceam_member)
     conversations = rapport.conversations_for(current_user.id, is_ceam_member, owner_user, tiers_users)
 
+    # Avatars des auteurs des messages (une seule recherche par auteur
+    # distinct, pas par message) — la commission a déjà owner_user et
+    # tiers_users sous la main, donc pas besoin de re-chercher pour eux.
+    known_avatars = {rapport.owner_id: owner_user.avatar_url if owner_user else None}
+    known_avatars.update({u.id: u.avatar_url for u in tiers_users})
+    author_avatars = dict(known_avatars)
+    unknown_author_ids = {
+        m["author_id"]
+        for conv in conversations for m in conv["messages"]
+        if m["author_id"] is not None and m["author_id"] not in author_avatars
+    }
+    for uid in unknown_author_ids:
+        author = User.get(uid)
+        author_avatars[uid] = author.avatar_url if author else None
+
     # Fils de discussion réellement autorisés pour CETTE personne — sert de
     # liste blanche stricte pour valider le champ "thread" soumis, afin
     # qu'un participant externe ne puisse jamais forger une requête pour
@@ -424,6 +439,7 @@ def detail(rapport_id):
         "ceam/detail.html",
         rapport=rapport,
         conversations=conversations,
+        author_avatars=author_avatars,
         note_form=note_form,
         suspension_form=suspension_form,
         cloture_form=cloture_form,
