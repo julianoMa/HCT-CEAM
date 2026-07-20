@@ -296,7 +296,6 @@ class Rapport:
             if owner_user is not None:
                 threads.append(build_thread(owner_user.id, f"{owner_user.name} (Plaignant)"))
 
-            print("tiers_roles :", self.tiers_roles)
             for u in (tiers_users or []):
                 role = (self.tiers_roles or {}).get(str(u.id), "Tiers")
                 threads.append(build_thread(u.id, f"{u.name} ({role})"))
