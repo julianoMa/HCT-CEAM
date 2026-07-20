@@ -1,5 +1,8 @@
+import hashlib
+import os
+
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, url_for
 
 from app.config import Config
 from app.extensions import csrf, init_firestore, login_manager
@@ -9,9 +12,54 @@ from app.startup_check import run_startup_checks
 load_dotenv()
 
 
+def _compute_static_fingerprint(static_folder, filename):
+    """Petite empreinte (8 caractères) du contenu actuel d'un fichier
+    statique. Retourne None si le fichier est introuvable, pour ne jamais
+    faire planter le rendu d'une page à cause de ça."""
+    filepath = os.path.join(static_folder, filename)
+    try:
+        with open(filepath, "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()[:8]
+    except OSError:
+        return None
+
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Cache navigateur LONG pour les fichiers statiques (CSS, JS, images) :
+    # sûr uniquement parce que versioned_static() (ci-dessous) change l'URL
+    # dès que le contenu du fichier change. Le navigateur ne voit donc
+    # jamais une URL "périmée" — une mise à jour de style.css/app.js produit
+    # une toute nouvelle URL, retéléchargée immédiatement, pendant que
+    # l'ancienne reste en cache (inutilisée) jusqu'à expiration naturelle.
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 31536000  # 1 an
+
+    # Cache des empreintes attaché à CETTE instance d'app (pas un cache de
+    # module type @lru_cache) : il se reconstruit à chaque redémarrage de
+    # process (donc à chaque déploiement), sans jamais rester bloqué sur
+    # une empreinte périmée si un worker restait actif entre deux
+    # déploiements — tout en évitant de relire le fichier à chaque requête
+    # au sein d'un même process déjà démarré.
+    static_fingerprints = {}
+
+    @app.context_processor
+    def inject_versioned_static():
+        def versioned_static(filename):
+            """À utiliser à la place de url_for('static', filename=...)
+            pour CSS/JS/images qui changent entre déploiements : ajoute
+            ?v=<empreinte> à l'URL, qui change automatiquement dès que le
+            fichier change, forçant le navigateur à le retélécharger même
+            s'il l'avait mis en cache pendant un an."""
+            if filename not in static_fingerprints:
+                static_fingerprints[filename] = _compute_static_fingerprint(app.static_folder, filename)
+            url = url_for("static", filename=filename)
+            fingerprint = static_fingerprints[filename]
+            if fingerprint:
+                url = f"{url}?v={fingerprint}"
+            return url
+        return dict(versioned_static=versioned_static)
 
     init_firestore(app)
     login_manager.init_app(app)

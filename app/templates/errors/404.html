@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CEAM — Page introuvable</title>
+  <title>CEAM — Erreur</title>
   <link rel="icon" type="image/x-icon" href="https://www.upload.ee/image/19563328/as83.ico">
   <script>
     (function () {
@@ -13,7 +13,7 @@
       document.documentElement.setAttribute("data-theme", theme);
     })();
   </script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('css/style.css') }}">
 </head>
 <body>
   <div class="auth-layout">
@@ -23,11 +23,11 @@
           <img src="https://www.zupimages.net/up/22/30/as83.png" alt="CEAM" class="auth-card__logo-img">
         </span>
       </div>
-      <p class="error-page__code">404</p>
-      <h1>Page introuvable</h1>
+      <p class="error-page__code">500</p>
+      <h1>Une erreur est survenue</h1>
       <p>
-        Cette page n'existe pas, ou le dossier que tu cherches a peut-être
-        été supprimé ou archivé.
+        Quelque chose s'est mal passé de notre côté. Réessaie dans quelques
+        instants, ou contacte un administrateur si le problème persiste.
       </p>
       <a href="{{ url_for('ceam.accueil') if current_user.is_authenticated else url_for('auth.login') }}" class="btn btn-primary">
         Retour à l'accueil
