@@ -210,13 +210,18 @@
               <div class="chat-message__header">
                 <span class="chat-message__author">{{ group.author_name }}</span>
                 <span class="chat-message__rank">{{ group.author_rank }}</span>
+                {% set first_entry = group.entries[0] %}
+                {% if first_entry.type_label and first_entry.type_label != "Message" %}
+                  <span class="badge-type">{{ first_entry.type_label }}</span>
+                {% endif %}
+                {% if first_entry.is_new %}
+                  <span class="chat-message__new">Nouveau</span>
+                {% endif %}
               </div>
               {% for r in group.entries %}
               <div class="chat-message__item {{ 'chat-message__item--continued' if not loop.first }}">
                 {% if (r.type_label and r.type_label != "Message") or r.is_new %}
                 <div class="chat-message__item-badges">
-                  {% if r.type_label and r.type_label != "Message" %}<span class="badge-type">{{ r.type_label }}</span>{% endif %}
-                  {% if r.is_new %}<span class="chat-message__new">Nouveau</span>{% endif %}
                 </div>
                 {% endif %}
                 <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}</div>
