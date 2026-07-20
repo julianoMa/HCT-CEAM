@@ -283,6 +283,113 @@
       input.disabled = true;
       await compressFileInput(input);
       input.disabled = false;
+      renderPendingAttachments(input);
+    });
+  });
+
+  // ── Aperçu (en cards) des fichiers joints dans le composer du chat,
+  // avant l'envoi du message — même look que les cards de pièces jointes
+  // déjà envoyées (preuves, réponses), avec un bouton pour retirer un
+  // fichier avant de cliquer sur Envoyer. ──
+  function fileIconSvg(isPdf) {
+    return isPdf
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
+  }
+
+  function renderPendingAttachments(input) {
+    const composer = input.closest("form");
+    const container = composer?.querySelector("[data-pending-attachments]");
+    if (!container) return;
+
+    container.innerHTML = "";
+    Array.from(input.files || []).forEach((file, index) => {
+      const isPdf = file.type === "application/pdf";
+      const sizeKo = Math.ceil(file.size / 1024);
+
+      const card = document.createElement("div");
+      card.className = "attachment-card attachment-card--pending";
+      card.innerHTML = `
+        <div class="attachment-card__icon">${fileIconSvg(isPdf)}</div>
+        <div class="attachment-card__info">
+          <span class="attachment-card__name">${file.name}</span>
+          <span class="attachment-card__meta">${isPdf ? "PDF" : "Image"} · ${sizeKo} Ko</span>
+        </div>
+        <button type="button" class="attachment-card__remove" aria-label="Retirer ce fichier" data-remove-index="${index}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll("[data-remove-index]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const removeIndex = Number(btn.dataset.removeIndex);
+        const dataTransfer = new DataTransfer();
+        Array.from(input.files).forEach((file, i) => {
+          if (i !== removeIndex) dataTransfer.items.add(file);
+        });
+        input.files = dataTransfer.files;
+        renderPendingAttachments(input);
+      });
+    });
+  }
+
+  document.querySelectorAll(".chat-panel__attach-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      // Si la compression d'images est aussi active sur ce champ, son
+      // propre gestionnaire (ci-dessus) rafraîchit déjà l'aperçu une fois
+      // les fichiers compressés — pas besoin de le refaire ici pour ce cas.
+      if (!input.hasAttribute("data-compress-images")) {
+        renderPendingAttachments(input);
+      }
+    });
+  });
+
+  // ── Glisser-déposer de fichiers dans le chat ──
+  // Déposer un fichier n'envoie pas le message directement, il se
+  // contente de le joindre (comme cliquer sur "Joindre") : la personne
+  // doit toujours valider l'envoi ensuite (bouton ou Ctrl+Entrée).
+  document.querySelectorAll(".chat-panel").forEach((chatPanel) => {
+    let dragCounter = 0;
+
+    chatPanel.addEventListener("dragenter", (event) => {
+      event.preventDefault();
+      dragCounter += 1;
+      chatPanel.classList.add("is-drag-over");
+    });
+
+    chatPanel.addEventListener("dragover", (event) => {
+      // Nécessaire pour autoriser le "drop" — sans ça, le navigateur
+      // refuse la dépose et ouvre le fichier dans un nouvel onglet.
+      event.preventDefault();
+    });
+
+    chatPanel.addEventListener("dragleave", () => {
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0) chatPanel.classList.remove("is-drag-over");
+    });
+
+    chatPanel.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dragCounter = 0;
+      chatPanel.classList.remove("is-drag-over");
+
+      const droppedFiles = event.dataTransfer?.files;
+      if (!droppedFiles || droppedFiles.length === 0) return;
+
+      // Les fichiers sont joints à la conversation ACTIVE (celle
+      // affichée à l'écran), pas à une conversation masquée.
+      const activeInput = chatPanel.querySelector(".chat-conversation-panel.is-active .chat-panel__attach-input");
+      if (!activeInput) return;
+
+      const dataTransfer = new DataTransfer();
+      Array.from(activeInput.files || []).forEach((f) => dataTransfer.items.add(f));
+      Array.from(droppedFiles).forEach((f) => dataTransfer.items.add(f));
+      activeInput.files = dataTransfer.files;
+      // Déclenche le même traitement que si les fichiers avaient été
+      // choisis via le bouton "Joindre" (compression + aperçu inclus).
+      activeInput.dispatchEvent(new Event("change"));
     });
   });
 
