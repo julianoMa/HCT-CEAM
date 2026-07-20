@@ -113,13 +113,30 @@ def suivi():
         limit = 10
     page = request.args.get("page", type=int) or 1
 
-    rapports = Rapport.query_open(status_filter=status_filter)
-    rapports = Rapport.filter_by_search(rapports, search_query)
-    total_count = len(rapports)
-    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
-    page = max(1, min(page, total_pages))
-    start = (page - 1) * limit
-    rapports = rapports[start:start + limit]
+    if search_query:
+        # Recherche texte : Firestore ne sait pas filtrer sur du texte
+        # libre nativement, donc on charge tout ce qui correspond au
+        # statut puis on filtre en Python — ce coût ne survient que
+        # lorsque quelqu'un tape réellement une recherche, pas à chaque
+        # visite de la page.
+        rapports = Rapport.query_open(status_filter=status_filter)
+        rapports = Rapport.filter_by_search(rapports, search_query)
+        total_count = len(rapports)
+        total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * limit
+        rapports = rapports[start:start + limit]
+    else:
+        # Pas de recherche (le cas de loin le plus fréquent) : le total
+        # vient d'une agrégation Firestore native (ne lit aucun document),
+        # et on ne récupère que ce qu'il faut pour atteindre la page
+        # demandée — plus besoin de charger tout le suivi à chaque visite.
+        total_count = Rapport.count_open(status_filter=status_filter)
+        total_pages = max(1, -(-total_count // limit))
+        page = max(1, min(page, total_pages))
+        rapports = Rapport.query_open(status_filter=status_filter, limit=page * limit)
+        start = (page - 1) * limit
+        rapports = rapports[start:start + limit]
 
     return render_template(
         "ceam/suivi.html",
@@ -144,13 +161,21 @@ def archives():
         limit = 10
     page = request.args.get("page", type=int) or 1
 
-    rapports = Rapport.query_archived()
-    rapports = Rapport.filter_by_search(rapports, search_query)
-    total_count = len(rapports)
-    total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
-    page = max(1, min(page, total_pages))
-    start = (page - 1) * limit
-    rapports = rapports[start:start + limit]
+    if search_query:
+        rapports = Rapport.query_archived()
+        rapports = Rapport.filter_by_search(rapports, search_query)
+        total_count = len(rapports)
+        total_pages = max(1, -(-total_count // limit))  # arrondi supérieur
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * limit
+        rapports = rapports[start:start + limit]
+    else:
+        total_count = Rapport.count_archived()
+        total_pages = max(1, -(-total_count // limit))
+        page = max(1, min(page, total_pages))
+        rapports = Rapport.query_archived(limit=page * limit)
+        start = (page - 1) * limit
+        rapports = rapports[start:start + limit]
 
     return render_template(
         "ceam/archives.html",

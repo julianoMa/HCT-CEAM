@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from google.api_core.exceptions import FailedPrecondition
 from google.cloud.firestore_v1 import FieldFilter
 
 from app.extensions import get_db
@@ -478,40 +479,83 @@ class Rapport:
             rapports_by_id[r.id] = r
         return cls._sort_by_send_date_desc(list(rapports_by_id.values()))
 
+    @staticmethod
+    def _count_query(query):
+        """Compte les résultats d'une requête via l'agrégation Firestore
+        native (COUNT) : ne lit que des entrées d'index, pas les documents
+        eux-mêmes — une fraction du coût d'un streaming complet suivi d'un
+        comptage en Python, quelle que soit la taille de la collection."""
+        results = query.count(alias="total").get()
+        return int(results[0][0].value)
+
     @classmethod
-    def query_open(cls, status_filter=None):
+    def query_open(cls, status_filter=None, limit=None):
         """Dossiers non archivés : tous statuts confondus si status_filter
         n'est pas fourni (y compris Clôturé), ou un statut précis sinon.
-        Un dossier archivé n'apparaît plus ici, quel que soit son statut."""
+        Un dossier archivé n'apparaît plus ici, quel que soit son statut.
+
+        `limit`, si fourni, plafonne le nombre de documents réellement lus
+        (trié par date d'envoi décroissante côté Firestore) — utile pour
+        n'aller chercher que ce qu'il faut pour les N premières pages
+        plutôt que toute la collection à chaque visite. Nécessite un index
+        composite (archived [+ status] + send_date) ; s'il n'existe pas
+        encore, on retombe automatiquement sur l'ancien comportement (tout
+        charger, trier en Python) pour ne jamais casser la page en
+        attendant sa création."""
         db = get_db()
         query = db.collection(COLLECTION).where(filter=FieldFilter("archived", "==", False))
         if status_filter is not None:
             query = query.where(filter=FieldFilter("status", "==", status_filter))
+        if limit is not None:
+            try:
+                ordered = query.order_by("send_date", direction="DESCENDING").limit(limit)
+                return [cls._from_doc(d) for d in ordered.stream()]
+            except FailedPrecondition:
+                pass  # index composite pas encore créé -> repli ci-dessous
         docs = query.stream()
         return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
 
     @classmethod
-    def query_archived(cls):
-        """Dossiers archivés par le président CEAM (indépendant du statut)."""
+    def count_open(cls, status_filter=None):
+        """Nombre de dossiers non archivés correspondant, sans lire leur
+        contenu (voir _count_query)."""
         db = get_db()
-        docs = (
-            db.collection(COLLECTION)
-            .where(filter=FieldFilter("archived", "==", True))
-            .stream()
-        )
+        query = db.collection(COLLECTION).where(filter=FieldFilter("archived", "==", False))
+        if status_filter is not None:
+            query = query.where(filter=FieldFilter("status", "==", status_filter))
+        return cls._count_query(query)
+
+    @classmethod
+    def query_archived(cls, limit=None):
+        """Dossiers archivés par le président CEAM (indépendant du statut).
+        Voir query_open pour le comportement de `limit`."""
+        db = get_db()
+        query = db.collection(COLLECTION).where(filter=FieldFilter("archived", "==", True))
+        if limit is not None:
+            try:
+                ordered = query.order_by("send_date", direction="DESCENDING").limit(limit)
+                return [cls._from_doc(d) for d in ordered.stream()]
+            except FailedPrecondition:
+                pass
+        docs = query.stream()
         return cls._sort_by_send_date_desc([cls._from_doc(d) for d in docs])
+
+    @classmethod
+    def count_archived(cls):
+        db = get_db()
+        query = db.collection(COLLECTION).where(filter=FieldFilter("archived", "==", True))
+        return cls._count_query(query)
 
     @classmethod
     def count_by_status(cls, status):
         db = get_db()
-        docs = db.collection(COLLECTION).where(filter=FieldFilter("status", "==", status)).stream()
-        return sum(1 for _ in docs)
+        query = db.collection(COLLECTION).where(filter=FieldFilter("status", "==", status))
+        return cls._count_query(query)
 
     @classmethod
     def count_all(cls):
         db = get_db()
-        docs = db.collection(COLLECTION).stream()
-        return sum(1 for _ in docs)
+        return cls._count_query(db.collection(COLLECTION))
 
     # Dimensions du graphique en aire (évolution hebdomadaire), en unités SVG.
     _CHART_WIDTH = 700
