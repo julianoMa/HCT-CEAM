@@ -35,7 +35,7 @@
         </td>
         {% elif list_context == "archives" %}
         <td>
-          {% if current_user.role >= current_user.ROLE_ADMIN %}
+          {% if current_user.role >= current_user.ROLE_PRESIDENT_CEAM %}
           <form method="post" action="{{ url_for('ceam.supprimer', rapport_id=r.id) }}" class="form-inline" data-delete-form>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="button" class="btn-danger btn-sm" data-confirm-delete data-reference="{{ r.reference }}">Supprimer</button>

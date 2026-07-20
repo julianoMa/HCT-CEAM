@@ -94,7 +94,7 @@
         </a>
         {% endif %}
 
-        {% if current_user.role >= 3 %}
+        {% if current_user.role >= current_user.ROLE_PRESIDENT_CEAM %}
         <span class="sidebar__section-label">Administration</span>
         <a href="{{ url_for('admin.utilisateurs') }}" title="Utilisateurs" class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.utilisateurs' }}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>

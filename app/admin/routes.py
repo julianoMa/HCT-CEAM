@@ -12,7 +12,7 @@ RESET_CONFIRMATION_PHRASE = "RÉINITIALISER"
 
 @bp.route("/utilisateurs")
 @login_required
-@requires_role(User.ROLE_ADMIN)
+@requires_role(User.ROLE_PRESIDENT_CEAM)
 def utilisateurs():
     search_query = request.args.get("q", "")
     limit = request.args.get("limit", type=int)
@@ -42,7 +42,7 @@ def utilisateurs():
 
 @bp.route("/utilisateurs/<int:user_id>/role", methods=["POST"])
 @login_required
-@requires_role(User.ROLE_ADMIN)
+@requires_role(User.ROLE_PRESIDENT_CEAM)
 def changer_role(user_id):
     user = User.get(user_id)
     nouveau_role = request.form.get("role", type=int)
@@ -72,7 +72,7 @@ def changer_role(user_id):
 
 @bp.route("/logs")
 @login_required
-@requires_role(User.ROLE_ADMIN)
+@requires_role(User.ROLE_PRESIDENT_CEAM)
 def logs():
     search_query = request.args.get("q", "")
     action_filter = request.args.get("action", "")
@@ -107,7 +107,7 @@ def logs():
 
 @bp.route("/reset-database", methods=["POST"])
 @login_required
-@requires_role(User.ROLE_ADMIN)
+@requires_role(User.ROLE_PRESIDENT_CEAM)
 def reset_database_confirm():
     """Réinitialisation complète de la base (voir app/database_reset.py).
     Double confirmation déjà faite côté interface (deux modals) ; ici, on
@@ -140,7 +140,7 @@ def reset_database_confirm():
 
 @bp.route("/utilisateurs/<int:user_id>/deconnecter", methods=["POST"])
 @login_required
-@requires_role(User.ROLE_ADMIN)
+@requires_role(User.ROLE_PRESIDENT_CEAM)
 def deconnecter_utilisateur(user_id):
     """Force la déconnexion d'un utilisateur : sa session actuelle devient
     invalide dès sa prochaine requête (voir User.force_logout)."""

@@ -488,7 +488,7 @@ def archiver(rapport_id):
 
 @bp.route("/dossier/<int:rapport_id>/supprimer", methods=["POST"])
 @login_required
-@requires_role(User.ROLE_ADMIN)
+@requires_role(User.ROLE_PRESIDENT_CEAM)
 def supprimer(rapport_id):
     rapport = Rapport.get(rapport_id)
     if rapport is None:
@@ -523,7 +523,7 @@ def reglement():
     """Règlement CEAM : visible par tout le monde (déclarants inclus),
     modifiable uniquement par les administrateurs."""
     doc = Reglement.get()
-    is_admin = current_user.role >= User.ROLE_ADMIN
+    is_admin = current_user.role >= User.ROLE_PRESIDENT_CEAM
 
     form = None
     if is_admin:

@@ -431,7 +431,7 @@
   </div>
 
   {% set can_archive = current_user.role >= current_user.ROLE_PRESIDENT_CEAM and not rapport.archived %}
-  {% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_ADMIN %}
+  {% set can_delete = rapport.archived and current_user.role >= current_user.ROLE_PRESIDENT_CEAM %}
   {% if can_archive or can_delete %}
   <div class="card card--padded">
     <p class="prose-label">Administration du dossier</p>
