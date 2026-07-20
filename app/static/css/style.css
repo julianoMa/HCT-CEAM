@@ -2585,7 +2585,7 @@ button.is-submitting,
   display: flex;
   justify-content: flex-start;
   gap: 8px;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .chat-message--mine {
