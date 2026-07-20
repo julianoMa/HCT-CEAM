@@ -2440,6 +2440,25 @@ button.is-submitting,
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.chat-conversations::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-conversations::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-conversations::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-full);
+}
+
+.chat-conversations::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .chat-conversations__item {
@@ -2523,6 +2542,25 @@ button.is-submitting,
   display: flex;
   flex-direction: column;
   gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.chat-panel__messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-panel__messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-panel__messages::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-full);
+}
+
+.chat-panel__messages::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .chat-message {
