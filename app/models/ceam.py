@@ -126,7 +126,7 @@ class Rapport:
                  concerne_last_name, concerne_first_name, concerne_affectation, concerne_rank,
                  event_date, event_hour, location, witness, description, proof,
                  send_date, owner_id, status, note, reponses=None, archived=False, status_history=None,
-                 proof_attachments=None, tiers_ids=None, messages_locked=False,
+                 proof_attachments=None, tiers_ids=None, tiers_roles=None, messages_locked=False,
                  classement=None, decision_rendered=False):
         self.id = id
         self.plaignant_last_name = plaignant_last_name
@@ -162,6 +162,9 @@ class Rapport:
         # Tiers ajoutés par la commission : utilisateurs (autres que le
         # déclarant) autorisés à consulter ce dossier, en plus de la CEAM.
         self.tiers_ids = tiers_ids or []
+
+        self.tiers_roles = tiers_roles or {}
+
         # Si activé par la commission, bloque l'envoi de nouveaux messages
         # par le déclarant et les tiers (ils gardent la lecture de tout
         # l'historique) — la commission, elle, peut toujours écrire.
@@ -292,7 +295,8 @@ class Rapport:
             if owner_user is not None:
                 threads.append(build_thread(owner_user.id, f"{owner_user.name} (Plaignant)"))
             for u in (tiers_users or []):
-                threads.append(build_thread(u.id, f"{u.name} (Tiers)"))
+                role = (self.tiers_roles or {}).get(str(u.id), "Tiers")
+                threads.append(build_thread(u.id, f"{u.name} ({role})"))
         else:
             threads.append(build_thread(user_id, "La commission"))
 
@@ -365,6 +369,7 @@ class Rapport:
             "archived": self.archived,
             "status_history": self.status_history,
             "tiers_ids": self.tiers_ids,
+            "tiers_roles": self.tiers_roles,
             "messages_locked": self.messages_locked,
             "classement": self.classement,
             "decision_rendered": self.decision_rendered,
@@ -382,6 +387,7 @@ class Rapport:
         data.setdefault("location", "")
         data.setdefault("proof_attachments", [])
         data.setdefault("tiers_ids", [])
+        data.setdefault("tiers_roles", {})
         data.setdefault("messages_locked", False)
         data.setdefault("classement", None)
         data.setdefault("decision_rendered", False)
@@ -982,6 +988,10 @@ class Rapport:
             return False
         db = get_db()
         tiers_ids = self.tiers_ids + [user_id]
+
+        tiers_roles = dict(self.tiers_roles or {})
+        tiers_roles[str(user_id)] = role_ajout
+
         db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
         self.tiers_ids = tiers_ids
         self._notifier_tiers_ajoute(user_id, role_ajout)
@@ -993,6 +1003,10 @@ class Rapport:
             return False
         db = get_db()
         tiers_ids = [t for t in self.tiers_ids if t != user_id]
+
+        tiers_roles = dict(self.tiers_roles or {})
+        tiers_roles.pop(str(user_id), None)
+
         db.collection(COLLECTION).document(str(self.id)).update({"tiers_ids": tiers_ids})
         self.tiers_ids = tiers_ids
         return True
