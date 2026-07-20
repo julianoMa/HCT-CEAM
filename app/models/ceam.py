@@ -9,7 +9,7 @@ from app.timezone_utils import chat_date_label, format_utc, local_date
 COLLECTION = "ceam"
 
 
-def _group_chat_messages(messages, gap_minutes=10):
+def _group_chat_messages(messages, gap_minutes=5):
     """Regroupe des messages consécutifs du même auteur, espacés de moins
     de `gap_minutes` minutes entre eux, en un seul bloc visuel — comme le
     fait Discord/Slack. Un bloc = un seul en-tête (nom/avatar), un seul
@@ -251,7 +251,7 @@ class Rapport:
             )
         ]
 
-    def conversations_for(self, user_id, is_ceam_member, owner_user=None, tiers_users=None, group_gap_minutes=10):
+    def conversations_for(self, user_id, is_ceam_member, owner_user=None, tiers_users=None, group_gap_minutes=5):
         """Regroupe les messages en fils de discussion distincts, adaptés
         à qui regarde :
         - un membre CEAM voit le fil général + un fil privé par
