@@ -911,7 +911,7 @@ class Rapport:
     def _notifier_nouveau_rapport(self):
         """MP à tous les membres de la commission lors du dépôt d'un rapport."""
         from app.models.user import User  # import différé : évite un cycle d'import
-        from app.notifications import build_embed, send_discord_dm
+        from app.notifications import build_embed, send_discord_dm_bulk
 
         embed = build_embed(
             title=f"📋 Nouveau rapport : {self.reference}",
@@ -925,8 +925,8 @@ class Rapport:
             ],
             url=self._detail_url(),
         )
-        for membre in User.list_ceam_members():
-            send_discord_dm(membre.discord_id, embed=embed)
+        discord_ids = [membre.discord_id for membre in User.list_ceam_members()]
+        send_discord_dm_bulk(discord_ids, embed=embed)
 
     def _notifier_message(self, reponse, author_id, author_is_ceam):
         """MP Discord aux personnes autorisées à voir ce message précis,
@@ -940,7 +940,7 @@ class Rapport:
           - si c'est la commission qui vient d'écrire (ciblant ce
             participant), on ne notifie que lui."""
         from app.models.user import User  # import différé : évite un cycle d'import
-        from app.notifications import build_embed, send_discord_dm
+        from app.notifications import build_embed, send_discord_dm, send_discord_dm_bulk
 
         embed = build_embed(
             title=f"📬 Mise à jour de ton dossier {self.reference}",
@@ -954,9 +954,8 @@ class Rapport:
             if visibility == author_id:
                 # Le propriétaire du fil privé vient d'y écrire -> notifier
                 # toute la commission.
-                for membre in User.list_ceam_members():
-                    if membre.id != author_id:
-                        send_discord_dm(membre.discord_id, embed=embed)
+                discord_ids = [m.discord_id for m in User.list_ceam_members() if m.id != author_id]
+                send_discord_dm_bulk(discord_ids, embed=embed)
             else:
                 # La commission vient d'écrire dans le fil privé de ce
                 # participant -> ne notifier que lui.
@@ -968,14 +967,12 @@ class Rapport:
         # visibility == "everyone"
         if author_is_ceam:
             destinataires_ids = {self.owner_id, *self.tiers_ids} - {author_id}
-            for user_id in destinataires_ids:
-                user = User.get(user_id)
-                if user is not None:
-                    send_discord_dm(user.discord_id, embed=embed)
+            destinataires = [User.get(uid) for uid in destinataires_ids]
+            discord_ids = [u.discord_id for u in destinataires if u is not None]
+            send_discord_dm_bulk(discord_ids, embed=embed)
         else:
-            for membre in User.list_ceam_members():
-                if membre.id != author_id:
-                    send_discord_dm(membre.discord_id, embed=embed)
+            discord_ids = [m.discord_id for m in User.list_ceam_members() if m.id != author_id]
+            send_discord_dm_bulk(discord_ids, embed=embed)
 
     def _notifier_changement_statut(self, entry):
         """MP au déclarant lors d'un changement de statut."""
