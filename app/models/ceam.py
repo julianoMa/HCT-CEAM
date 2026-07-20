@@ -298,8 +298,6 @@ class Rapport:
 
             print("tiers_roles :", self.tiers_roles)
             for u in (tiers_users or []):
-                print("Valeur trouvée :", (self.tiers_roles or {}).get(str(u.id)))
-                print("Toutes les clés :", list((self.tiers_roles or {}).keys()))
                 role = (self.tiers_roles or {}).get(str(u.id), "Tiers")
                 threads.append(build_thread(u.id, f"{u.name} ({role})"))
         else:
