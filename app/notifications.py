@@ -1,144 +1,113 @@
 """
-Notifications in-app (cloche + historique dans la sidebar), indépendantes
-des MP Discord (qui existent déjà en parallèle sur les mêmes événements).
-Une notification appartient toujours à un seul utilisateur (le déclarant
-propriétaire du dossier concerné).
+Envoi de notifications par message privé (MP) Discord, via le bot de
+l'application (nécessite DISCORD_BOT_TOKEN, voir app/config.py).
+
+Toute notification échoue silencieusement (log uniquement) plutôt que de
+faire planter l'action métier associée (dépôt de rapport, envoi de
+réponse...) : un MP raté ne doit jamais empêcher une opération de la CEAM.
+Causes fréquentes d'échec : la personne a désactivé les MP venant des
+membres du serveur, ou le bot n'a pas encore été invité sur le serveur HCT.
 """
 
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
-from google.cloud.firestore_v1 import FieldFilter
+import requests
+from flask import current_app
 
-from app.extensions import get_db
-from app.firestore_utils import next_id
-from app.timezone_utils import format_utc
-
-COLLECTION = "notifications"
+# Doré, cohérent avec l'identité visuelle du site (variable CSS --accent).
+ACCENT_COLOR = 0xF4B65D
 
 
-class Notification:
-    TYPE_RAPPORT_ENVOYE = "rapport_envoye"
-    TYPE_STATUT_CHANGE = "statut_change"
-    TYPE_REPONSE_AJOUTEE = "reponse_ajoutee"
-    TYPE_TIERS_AJOUTE = "tiers_ajoute"
+def send_discord_dm_bulk(discord_ids, content=None, embed=None):
+    """Envoie le même MP à PLUSIEURS personnes EN PARALLÈLE, pas les unes
+    après les autres. Chaque MP Discord nécessite 2 appels réseau
+    (création/récupération du canal, puis envoi du message) — les envoyer
+    en série à toute la commission (dépôt de rapport, nouveau message...)
+    pouvait bloquer la réponse plusieurs secondes, le temps de tous les
+    finir un par un. Des threads suffisent ici : ce sont des appels
+    réseau (I/O), donc le GIL se libère pendant l'attente — pas besoin de
+    vrai parallélisme CPU. Reste dans le cycle requête/réponse (pas de
+    tâche en arrière-plan qui pourrait être interrompue par la plateforme
+    une fois la réponse envoyée)."""
+    if not discord_ids:
+        return
+    # current_app est un proxy lié au contexte de LA requête en cours —
+    # il faut le résoudre en objet concret avant de le réutiliser dans un
+    # thread, qui n'a pas ce contexte par défaut.
+    app = current_app._get_current_object()
 
-    def __init__(self, id, user_id, type, message, rapport_id, read, created_at):
-        self.id = id
-        self.user_id = user_id
-        self.type = type
-        self.message = message
-        self.rapport_id = rapport_id
-        self.read = read
-        self.created_at = created_at  # string ISO 8601
+    def _send_one(discord_id):
+        with app.app_context():
+            try:
+                send_discord_dm(discord_id, content=content, embed=embed)
+            except Exception:  # noqa: BLE001 - un MP raté ne doit jamais faire planter le reste
+                app.logger.warning("Échec inattendu de l'envoi d'un MP Discord à %s", discord_id)
 
-    @property
-    def created_at_fr(self):
-        return format_utc(self.created_at)
+    with ThreadPoolExecutor(max_workers=min(8, len(discord_ids))) as executor:
+        list(executor.map(_send_one, discord_ids))
 
-    def to_dict(self):
-        return {
-            "user_id": self.user_id,
-            "type": self.type,
-            "message": self.message,
-            "rapport_id": self.rapport_id,
-            "read": self.read,
-            "created_at": self.created_at,
-        }
 
-    @classmethod
-    def _from_doc(cls, doc):
-        data = doc.to_dict()
-        return cls(id=int(doc.id), **data)
+def build_embed(title, description, fields=None, url=None):
+    """Construit un embed Discord simple et cohérent (couleur, pied de
+    page, horodatage), utilisé pour toutes les notifications CEAM."""
+    embed = {
+        "title": title,
+        "description": description,
+        "color": ACCENT_COLOR,
+        "footer": {"text": "Commission d'Éthique des Affaires Médicales"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if url:
+        embed["url"] = url
+    if fields:
+        embed["fields"] = fields
+    return embed
 
-    @classmethod
-    def create(cls, user_id, type, message, rapport_id=None):
-        """Crée une notification. Échoue silencieusement (log absent
-        volontairement simple) plutôt que de faire planter l'action métier
-        associée (dépôt, changement de statut, envoi de réponse...)."""
-        try:
-            db = get_db()
-            new_id = next_id(db, COLLECTION)
-            notif = cls(
-                id=new_id,
-                user_id=user_id,
-                type=type,
-                message=message,
-                rapport_id=rapport_id,
-                read=False,
-                created_at=datetime.utcnow().isoformat(timespec="minutes"),
-            )
-            db.collection(COLLECTION).document(str(new_id)).set(notif.to_dict())
-            return notif
-        except Exception:  # noqa: BLE001 - une notif ratée ne doit jamais bloquer l'action réelle
-            return None
 
-    @classmethod
-    def list_for_user(cls, user_id, limit=200):
-        db = get_db()
-        docs = (
-            db.collection(COLLECTION)
-            .where(filter=FieldFilter("user_id", "==", user_id))
-            .order_by("created_at", direction="DESCENDING")
-            .limit(limit)
-            .stream()
+def send_discord_dm(discord_id, content=None, embed=None):
+    """Envoie un MP Discord — sous forme d'embed si `embed` est fourni
+    (recommandé, voir build_embed), sinon en texte brut via `content`.
+    Retourne True si envoyé, False sinon."""
+    bot_token = current_app.config.get("DISCORD_BOT_TOKEN")
+    if not bot_token:
+        current_app.logger.warning(
+            "DISCORD_BOT_TOKEN non configuré : notification DM ignorée."
         )
-        return [cls._from_doc(d) for d in docs]
+        return False
 
-    @classmethod
-    def count_unread(cls, user_id):
-        """Compte via l'agrégation Firestore native (.count()) — ne lit
-        que des entrées d'index, pas les documents eux-mêmes. Important
-        ici : cette méthode tourne à CHAQUE page authentifiée (badge de
-        la sidebar), donc son coût se multiplie par le nombre de visites,
-        pas juste par le nombre de notifications."""
-        db = get_db()
-        query = (
-            db.collection(COLLECTION)
-            .where(filter=FieldFilter("user_id", "==", user_id))
-            .where(filter=FieldFilter("read", "==", False))
+    headers = {
+        "Authorization": f"Bot {bot_token}",
+        "Content-Type": "application/json",
+    }
+    base_url = current_app.config["DISCORD_API_BASE_URL"]
+
+    payload = {}
+    if content:
+        payload["content"] = content
+    if embed:
+        payload["embeds"] = [embed]
+
+    try:
+        channel_resp = requests.post(
+            f"{base_url}/users/@me/channels",
+            headers=headers,
+            json={"recipient_id": str(discord_id)},
+            timeout=5,
         )
-        results = query.count(alias="total").get()
-        return int(results[0][0].value)
+        channel_resp.raise_for_status()
+        channel_id = channel_resp.json()["id"]
 
-    @classmethod
-    def mark_read(cls, notification_id, user_id):
-        """Marque une notification comme lue, seulement si elle appartient
-        bien à l'utilisateur demandeur."""
-        db = get_db()
-        doc_ref = db.collection(COLLECTION).document(str(notification_id))
-        doc = doc_ref.get()
-        if not doc.exists or doc.to_dict().get("user_id") != user_id:
-            return False
-        doc_ref.update({"read": True})
+        message_resp = requests.post(
+            f"{base_url}/channels/{channel_id}/messages",
+            headers=headers,
+            json=payload,
+            timeout=5,
+        )
+        message_resp.raise_for_status()
         return True
-
-    @classmethod
-    def mark_all_read(cls, user_id):
-        db = get_db()
-        docs = (
-            db.collection(COLLECTION)
-            .where(filter=FieldFilter("user_id", "==", user_id))
-            .where(filter=FieldFilter("read", "==", False))
-            .stream()
+    except requests.RequestException as exc:
+        current_app.logger.warning(
+            "Échec de l'envoi du MP Discord à %s : %s", discord_id, exc
         )
-        count = 0
-        for doc in docs:
-            doc.reference.update({"read": True})
-            count += 1
-        return count
-
-    @classmethod
-    def mark_read_for_rapport(cls, user_id, rapport_id):
-        """Marque comme lues toutes les notifications d'un utilisateur liées
-        à un dossier précis — appelé automatiquement à la consultation du
-        dossier (voir ceam.detail)."""
-        db = get_db()
-        docs = (
-            db.collection(COLLECTION)
-            .where(filter=FieldFilter("user_id", "==", user_id))
-            .where(filter=FieldFilter("rapport_id", "==", rapport_id))
-            .where(filter=FieldFilter("read", "==", False))
-            .stream()
-        )
-        for doc in docs:
-            doc.reference.update({"read": True})
+        return False
