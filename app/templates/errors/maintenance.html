@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEAM — Maintenance en cours</title>
+  <link rel="icon" type="image/x-icon" href="https://www.upload.ee/image/19563328/as83.ico">
+  <script>
+    (function () {
+      var saved = localStorage.getItem("ceam-theme");
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var theme = saved || (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ versioned_static('css/style.css') }}">
+</head>
+<body>
+  <div class="auth-layout">
+    <div class="auth-card">
+      <div class="auth-card__logo">
+        <span class="auth-card__logo-wrap">
+          <img src="https://www.zupimages.net/up/22/30/as83.png" alt="CEAM" class="auth-card__logo-img">
+        </span>
+      </div>
+      <p class="error-page__code">🛠️</p>
+      <h1>Maintenance en cours</h1>
+      <p>
+        Le site est temporairement indisponible pendant une intervention technique.
+        Merci de réessayer un peu plus tard.
+      </p>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-secondary" style="margin-top: 0.5rem;">
+        Se connecter
+      </a>
+    </div>
+      <footer class="app-footer app-footer--auth">
+        Fait avec <span class="app-footer__heart" aria-hidden="true">❤️</span> par
+        <a href="https://github.com/julianoMa/HCT-CEAM" target="_blank" rel="noopener noreferrer">Thefern</a>
+      </footer>
+  </div>
+</body>
+</html>

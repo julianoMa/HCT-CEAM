@@ -111,6 +111,45 @@ def logs():
     )
 
 
+@bp.route("/systeme")
+@login_required
+@requires_role(User.ROLE_PRESIDENT_CEAM)
+def systeme():
+    from app.models import maintenance as maintenance_model
+    return render_template("admin/systeme.html", maintenance_active=maintenance_model.is_active())
+
+
+@bp.route("/systeme/maintenance", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_PRESIDENT_CEAM)
+def toggle_maintenance():
+    from app.models import maintenance as maintenance_model
+
+    activate = request.form.get("activate") == "1"
+    actor_name = f"{current_user.name} ({current_user.role_label})"
+    if activate:
+        maintenance_model.activate(actor_name)
+        AuditLog.record(
+            action=AuditLog.ACTION_MAINTENANCE_TOGGLE,
+            actor_name=actor_name,
+            details=f"{actor_name} a activé le mode maintenance.",
+        )
+        flash(
+            "Mode maintenance activé : seuls le président CEAM et l'administrateur ont "
+            "encore accès au site.",
+            "success",
+        )
+    else:
+        maintenance_model.deactivate(actor_name)
+        AuditLog.record(
+            action=AuditLog.ACTION_MAINTENANCE_TOGGLE,
+            actor_name=actor_name,
+            details=f"{actor_name} a désactivé le mode maintenance.",
+        )
+        flash("Mode maintenance désactivé : le site est de nouveau accessible à tous.", "success")
+    return redirect(url_for("admin.systeme"))
+
+
 @bp.route("/reset-database/envoyer-code", methods=["POST"])
 @login_required
 @requires_role(User.ROLE_PRESIDENT_CEAM)

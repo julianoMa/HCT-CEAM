@@ -1,0 +1,166 @@
+{% from "macros/ui.html" import page_header %}
+
+{% extends "base.html" %}
+{% block content %}
+{% call page_header("Administration", "Système", "Mode maintenance et réinitialisation de la base de données — actions sensibles réservées au président CEAM et à l'administrateur.") %}{% endcall %}
+
+<div class="card card--padded" style="margin-bottom: 1.5rem; {{ 'border-color: var(--danger-border); background: var(--danger-bg);' if maintenance_active }}">
+  <p class="prose-label" style="margin-bottom: 0.5rem;">Mode maintenance</p>
+  <p class="prose" style="margin-bottom: 1rem;">
+    Bloque temporairement l'accès au site pour tout le monde, sauf le président CEAM et
+    l'administrateur — utile pendant une intervention sur la base de données. Une page de
+    maintenance propre s'affiche à la place d'une erreur brute pour les autres.
+  </p>
+  {% if maintenance_active %}
+  <p class="prose" style="margin-bottom: 1rem; color: var(--danger-text); font-weight: 700;">
+    ⚠️ Le mode maintenance est actuellement ACTIF.
+  </p>
+  <form method="post" action="{{ url_for('admin.toggle_maintenance') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="activate" value="0">
+    <button type="submit" class="btn-primary">Désactiver le mode maintenance</button>
+  </form>
+  {% else %}
+  <button type="button" class="btn-secondary" data-open-modal="maintenance-confirm">
+    Activer le mode maintenance
+  </button>
+  {% endif %}
+</div>
+
+<div class="modal-overlay" id="maintenance-confirm" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="maintenance-confirm-title">
+    <h2 id="maintenance-confirm-title" class="modal__title">Activer le mode maintenance ?</h2>
+    <p class="prose" style="margin-bottom: 1.25rem;">
+      Tout le monde, sauf le président CEAM et l'administrateur, verra une page de maintenance
+      à la place du site — y compris les personnes déjà connectées. Pense à le désactiver une
+      fois ton intervention terminée.
+    </p>
+    <form method="post" action="{{ url_for('admin.toggle_maintenance') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="activate" value="1">
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit" class="btn-primary">Activer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card card--padded" style="margin-top: 1.5rem; border-color: var(--danger-border); background: var(--danger-bg);">
+  <p class="prose-label" style="color: var(--danger-text); margin-bottom: 0.5rem;">Zone dangereuse</p>
+  <p class="prose" style="margin-bottom: 1rem;">
+    Réinitialise complètement la base de données : tous les dossiers, comptes utilisateurs,
+    notifications, pièces jointes et ce journal d'activité seront supprimés définitivement.
+    Les identifiants (références de dossiers, etc.) repartiront de zéro. Le règlement CEAM
+    est conservé.
+  </p>
+  <button type="button" class="btn-danger" data-open-modal="reset-confirm-1">
+    Réinitialiser la base de données
+  </button>
+</div>
+
+<div class="modal-overlay" id="reset-confirm-1" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-1-title">
+    <h2 id="reset-confirm-1-title" class="modal__title">Réinitialiser la base de données ?</h2>
+    <p class="prose" style="margin-bottom: 1.25rem;">
+      Cette action est <strong>irréversible</strong>. Tous les dossiers, comptes, notifications
+      et pièces jointes seront supprimés définitivement, et les compteurs d'identifiants
+      repartiront à zéro.
+    </p>
+    <div class="modal__actions">
+      <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+      <button type="button" class="btn-danger" data-close-modal data-open-modal="reset-confirm-2">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-confirm-2" aria-hidden="true">
+  <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-2-title">
+    <h2 id="reset-confirm-2-title" class="modal__title">Confirmation finale</h2>
+    <p class="prose" style="margin-bottom: 0.75rem;">Seront supprimés définitivement :</p>
+    <ul class="ceam-list" style="margin-bottom: 1rem;">
+      <li>Tous les dossiers CEAM et leurs pièces jointes</li>
+      <li>Tous les comptes utilisateurs (tout le monde devra se reconnecter)</li>
+      <li>Toutes les notifications</li>
+      <li>Le journal d'activité (y compris cette action elle-même, qui ne sera donc pas tracée)</li>
+    </ul>
+    <p class="prose" style="margin-bottom: 1.25rem;"><strong>Conservé :</strong> le règlement CEAM.</p>
+    <form method="post" action="{{ url_for('admin.reset_database_send_code') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label>Tape <strong>RÉINITIALISER</strong> pour confirmer</label>
+        <input type="text" name="confirmation_phrase" id="reset-confirmation-input" autocomplete="off">
+      </div>
+      <p class="info-card__meta" style="margin-bottom: 1.25rem;">
+        Un code de confirmation à 5 caractères sera ensuite envoyé par MP Discord — la base
+        ne sera réinitialisée qu'après l'avoir retapé.
+      </p>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit" class="btn-danger" id="reset-confirm-submit" disabled>Envoyer le code de confirmation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-confirm-3" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-3-title">
+    <h2 id="reset-confirm-3-title" class="modal__title">Dernière étape</h2>
+    <p class="prose" style="margin-bottom: 1.25rem;">
+      Un code à 5 caractères vient de t'être envoyé par MP Discord. Retape-le ici pour
+      réinitialiser définitivement la base de données. Le code expire dans 10 minutes.
+    </p>
+    <form method="post" action="{{ url_for('admin.reset_database_confirm') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label>Code reçu par MP Discord</label>
+        <input
+          type="text"
+          name="reset_code"
+          id="reset-code-input"
+          autocomplete="off"
+          maxlength="5"
+          style="text-transform: uppercase; letter-spacing: 0.2em; font-weight: 700; text-align: center;"
+        >
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit" class="btn-danger" id="reset-code-submit" disabled>Réinitialiser définitivement</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById("reset-confirmation-input");
+    var submitBtn = document.getElementById("reset-confirm-submit");
+    if (input && submitBtn) {
+      input.addEventListener("input", function () {
+        submitBtn.disabled = input.value.trim() !== "RÉINITIALISER";
+      });
+    }
+
+    var codeInput = document.getElementById("reset-code-input");
+    var codeSubmitBtn = document.getElementById("reset-code-submit");
+    if (codeInput && codeSubmitBtn) {
+      codeInput.addEventListener("input", function () {
+        codeInput.value = codeInput.value.toUpperCase();
+        codeSubmitBtn.disabled = codeInput.value.trim().length !== 5;
+      });
+    }
+
+    // Après l'envoi du code (redirection avec ?show_reset_code_modal=1),
+    // ouvrir directement le 3e modal plutôt que de laisser la personne le
+    // rechercher elle-même dans la page.
+    if (new URLSearchParams(window.location.search).get("show_reset_code_modal")) {
+      var codeModal = document.getElementById("reset-confirm-3");
+      if (codeModal) {
+        codeModal.classList.add("is-visible");
+        codeModal.setAttribute("aria-hidden", "false");
+      }
+    }
+  })();
+</script>
+
+{% endblock %}

@@ -133,7 +133,32 @@ def create_app(config_class=Config):
     app.register_blueprint(ceam_bp)
     app.register_blueprint(admin_bp)
 
-    from flask import redirect, url_for
+    from flask import redirect, request, url_for
+
+    from app.models import maintenance as maintenance_model
+
+    @app.before_request
+    def check_maintenance_mode():
+        """Bloque l'accès à tout le monde sauf le président CEAM et
+        l'administrateur quand le mode maintenance est actif (voir
+        app/admin/routes.py). Laisse TOUJOURS passer : les fichiers
+        statiques (sinon la page de maintenance elle-même n'aurait plus
+        de style), et les routes de connexion (sinon même le président
+        ne pourrait plus se reconnecter pour désactiver le mode
+        maintenance si sa session avait expiré entre-temps)."""
+        from flask_login import current_user
+
+        endpoint = request.endpoint or ""
+        if endpoint == "static" or endpoint.startswith("minified__") or endpoint.startswith("auth."):
+            return None
+
+        if not maintenance_model.is_active():
+            return None
+
+        if current_user.is_authenticated and current_user.role >= current_user.ROLE_PRESIDENT_CEAM:
+            return None
+
+        return render_template("errors/maintenance.html"), 503
 
     @app.route("/")
     def index():

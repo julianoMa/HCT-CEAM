@@ -17,12 +17,7 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <!-- Vercel Speed Insights -->
-  <script>
-    window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
-  </script>
-  <script defer src="/_vercel/speed-insights/script.js"></script>
+  <link rel="stylesheet" href="{{ versioned_static('css/style.css') }}">
 </head>
 <body>
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -108,6 +103,10 @@
         <a href="{{ url_for('admin.logs') }}" title="Journal d'activité" class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.logs' }}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4"/></svg>
           <span class="sidebar__link-text">Journal d'activité</span>
+        </a>
+        <a href="{{ url_for('admin.systeme') }}" title="Système" class="sidebar__link {{ 'is-active' if request.endpoint == 'admin.systeme' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20a8 8 0 100-16 8 8 0 000 16z"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <span class="sidebar__link-text">Système</span>
         </a>
         {% endif %}
       </nav>
