@@ -715,6 +715,8 @@
   // que ce soit ; ce menu n'est qu'un raccourci, pas la sécurité.
   const contextMenu = document.getElementById("chat-message-context-menu");
   const deleteForm = document.getElementById("chat-delete-message-form");
+  const chatPanel = document.querySelector(".chat-panel");
+  const canDeleteAny = chatPanel ? chatPanel.dataset.canDeleteAny === "true" : false;
   if (contextMenu && deleteForm) {
     let targetMessageId = null;
 
@@ -725,8 +727,12 @@
 
     document.querySelectorAll(".chat-message__bubble").forEach((bubble) => {
       bubble.addEventListener("contextmenu", (event) => {
+        // Le président CEAM / admin (canDeleteAny) peut faire un clic
+        // droit sur N'IMPORTE QUELLE carte, pas seulement les siennes —
+        // le serveur revérifie de toute façon le rôle réel avant
+        // d'accepter la suppression, ceci n'est que l'affichage du menu.
         const isMine = !!bubble.closest(".chat-message--mine");
-        if (!isMine) return; // pas notre carte
+        if (!isMine && !canDeleteAny) return; // pas notre carte, et pas de privilège
 
         // Cible le message précis sous le curseur si le clic droit tombe
         // dedans (utile quand plusieurs messages sont regroupés dans la

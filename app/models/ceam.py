@@ -917,14 +917,17 @@ class Rapport:
                 )
         return reponse
 
-    def delete_reponse(self, message_id, user_id):
-        """Supprime UN message précis, seulement si `user_id` en est
-        réellement l'auteur — jamais le message de quelqu'un d'autre, ni
-        une réponse officielle de la commission (author_id=None,
-        n'appartient à personne en particulier). Retourne True si
-        supprimé, False sinon (introuvable, ou pas le bon auteur) — ne
-        lève jamais d'exception, pour rester silencieux côté appelant
-        face à une tentative illégitime plutôt que de révéler pourquoi.
+    def delete_reponse(self, message_id, user_id, force=False):
+        """Supprime UN message précis. Par défaut, seulement si `user_id`
+        en est réellement l'auteur — jamais le message de quelqu'un
+        d'autre. `force=True` (réservé président CEAM / administrateur,
+        vérifié côté route) permet de supprimer N'IMPORTE QUEL message,
+        y compris une réponse officielle de la commission (author_id=None).
+
+        Retourne True si supprimé, False sinon (introuvable, ou pas
+        autorisé) — ne lève jamais d'exception, pour rester silencieux
+        côté appelant face à une tentative illégitime plutôt que de
+        révéler pourquoi.
 
         Utilise ArrayRemove (une écriture ciblée, comme ArrayUnion pour
         l'ajout) plutôt que de réécrire tout l'historique — possible ici
@@ -936,18 +939,37 @@ class Rapport:
             if r.get("message_id") == message_id:
                 target = r
                 break
-        if target is None or target.get("author_id") != user_id:
+        if target is None:
+            return False
+        is_own_message = target.get("author_id") == user_id
+        if not is_own_message and not force:
             return False
 
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+        from app.models.user import User  # idem
 
         db = get_db()
         db.collection(COLLECTION).document(str(self.id)).update({"reponses": ArrayRemove([target])})
         self.reponses = [r for r in self.reponses if r.get("message_id") != message_id]
+
+        if is_own_message:
+            actor_name = target.get("author_name", "")
+            details = f"{actor_name} a supprimé un de ses messages sur le dossier {self.reference}"
+        else:
+            # Suppression forcée par un président CEAM / admin, sur le
+            # message de quelqu'un d'autre — la traçabilité doit être
+            # claire sur QUI a réellement fait l'action, pas laisser
+            # croire que l'auteur d'origine l'a supprimé lui-même.
+            deleter = User.get(user_id)
+            actor_name = f"{deleter.name} ({deleter.role_label})" if deleter else f"Utilisateur #{user_id}"
+            details = (
+                f"{actor_name} a supprimé un message de {target.get('author_name', '?')} "
+                f"sur le dossier {self.reference}"
+            )
         AuditLog.record(
             action=AuditLog.ACTION_REPONSE_DELETE,
-            actor_name=target.get("author_name", ""),
-            details=f"{target.get('author_name', '')} a supprimé un de ses messages sur le dossier {self.reference}",
+            actor_name=actor_name,
+            details=details,
         )
         return True
 

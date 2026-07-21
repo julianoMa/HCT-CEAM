@@ -291,10 +291,12 @@ def detail(rapport_id):
 
     if action == "delete_message":
         message_id = request.form.get("message_id", "")
-        # rapport.delete_reponse() revérifie lui-même que current_user.id
-        # est bien l'auteur du message — ce contrôle ici n'est qu'un
-        # message d'erreur plus parlant, pas la seule ligne de défense.
-        if message_id and rapport.delete_reponse(message_id, current_user.id):
+        # Le président CEAM et l'administrateur peuvent supprimer
+        # N'IMPORTE QUEL message, pas seulement les leurs — ce calcul se
+        # fait ici, côté serveur, à partir du rôle réel de la personne
+        # connectée (jamais d'une valeur envoyée par le formulaire).
+        can_delete_any = current_user.role >= User.ROLE_PRESIDENT_CEAM
+        if message_id and rapport.delete_reponse(message_id, current_user.id, force=can_delete_any):
             flash("Message supprimé.", "success")
         else:
             flash("Impossible de supprimer ce message.", "danger")
@@ -455,6 +457,7 @@ def detail(rapport_id):
         "ceam/detail.html",
         rapport=rapport,
         conversations=conversations,
+        can_delete_any_message=current_user.role >= User.ROLE_PRESIDENT_CEAM,
         author_avatars=author_avatars,
         note_form=note_form,
         suspension_form=suspension_form,
