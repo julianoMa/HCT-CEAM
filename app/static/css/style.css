@@ -3231,3 +3231,9 @@ button.is-submitting,
 .chat-message__context-menu-item--danger {
   color: var(--danger-text);
 }
+
+.chat-message__edited {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-muted);
+}

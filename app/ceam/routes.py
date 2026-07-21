@@ -318,6 +318,20 @@ def detail(rapport_id):
         )
         return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
 
+    if action == "edit_message":
+        message_id = request.form.get("message_id", "")
+        new_content = request.form.get("content", "")
+        # Même privilège que pour la suppression : le président CEAM et
+        # l'administrateur peuvent modifier N'IMPORTE QUEL message, pas
+        # seulement les leurs — calculé côté serveur, jamais depuis le
+        # formulaire.
+        can_edit_any = current_user.role >= User.ROLE_PRESIDENT_CEAM
+        if message_id and rapport.edit_reponse(message_id, new_content, current_user.id, force=can_edit_any):
+            flash("Message modifié.", "success")
+        else:
+            flash("Impossible de modifier ce message.", "danger")
+        return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
+
     if action == "delete_message":
         message_id = request.form.get("message_id", "")
         # Le président CEAM et l'administrateur peuvent supprimer

@@ -719,10 +719,12 @@
   const canDeleteAny = chatPanel ? chatPanel.dataset.canDeleteAny === "true" : false;
   if (contextMenu && deleteForm) {
     let targetMessageId = null;
+    let targetItemElement = null;
 
     const hideContextMenu = () => {
       contextMenu.hidden = true;
       targetMessageId = null;
+      targetItemElement = null;
     };
 
     document.querySelectorAll(".chat-message__bubble").forEach((bubble) => {
@@ -746,6 +748,7 @@
 
         event.preventDefault();
         targetMessageId = messageId;
+        targetItemElement = targetItem;
 
         const menuWidth = 180;
         const menuHeight = 44;
@@ -767,6 +770,21 @@
     window.addEventListener("resize", hideContextMenu);
 
     const deleteButton = contextMenu.querySelector("[data-context-menu-delete]");
+    const editButton = contextMenu.querySelector("[data-context-menu-edit]");
+    const editModal = document.getElementById("edit-message-modal");
+    editButton.addEventListener("click", () => {
+      const messageId = targetMessageId;
+      const itemElement = targetItemElement;
+      hideContextMenu();
+      if (!messageId || !itemElement || !editModal) return;
+      editModal.querySelector("#edit-message-id").value = messageId;
+      const textarea = editModal.querySelector("#edit-message-content");
+      textarea.value = itemElement.dataset.content || "";
+      editModal.classList.add("is-visible");
+      editModal.setAttribute("aria-hidden", "false");
+      textarea.focus();
+    });
+
     deleteButton.addEventListener("click", () => {
       const messageId = targetMessageId;
       hideContextMenu();

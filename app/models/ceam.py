@@ -223,6 +223,7 @@ class Rapport:
             sent_at_fr = format_utc(sent_at)
             affichage.append({
                 "message_id": r.get("message_id"),
+                "edited": r.get("edited", False),
                 "type_label": r.get("type") or "Réponse",
                 "content": r.get("content", ""),
                 "author_name": r.get("author_name", ""),
@@ -961,6 +962,68 @@ class Rapport:
             db.collection(COLLECTION).document(str(self.id)).update({"reponses": updated})
             self.reponses = updated
         return changed
+
+    def edit_reponse(self, message_id, new_content, user_id, force=False):
+        """Modifie le CONTENU d'un message précis. Par défaut, seulement
+        si `user_id` en est réellement l'auteur — jamais le message de
+        quelqu'un d'autre. `force=True` (réservé président CEAM /
+        administrateur, vérifié côté route) permet de modifier
+        N'IMPORTE QUEL message, comme pour la suppression.
+
+        Marque le message comme "modifié" (avec l'horodatage de la
+        modification) pour la transparence — contrairement à la
+        suppression, une trace reste visible que ce message a changé.
+
+        Utilise ArrayRemove + ArrayUnion en une seule écriture (retire
+        l'ancienne version, ajoute la nouvelle) plutôt que de réécrire
+        tout l'historique — possible ici précisément parce que chaque
+        message a un message_id unique."""
+        target = None
+        for r in self.reponses:
+            if r.get("message_id") == message_id:
+                target = r
+                break
+        if target is None:
+            return False
+        is_own_message = target.get("author_id") == user_id
+        if not is_own_message and not force:
+            return False
+
+        new_content = (new_content or "").strip()
+        if not new_content:
+            return False
+
+        from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
+        from app.models.user import User  # idem
+
+        updated = {**target, "content": new_content, "edited": True, "edited_at": datetime.utcnow().isoformat(timespec="minutes")}
+        new_reponses = [updated if r.get("message_id") == message_id else r for r in self.reponses]
+        db = get_db()
+        # Une seule écriture complète, pas ArrayRemove+ArrayUnion en deux
+        # appels séparés (qui ne serait pas atomique — un souci réseau
+        # entre les deux pourrait perdre le message). L'édition, à la
+        # différence de l'envoi ou du marquage lu, est rare : le coût
+        # d'une réécriture complète du tableau est largement acceptable
+        # ici, la priorité va à la fiabilité.
+        db.collection(COLLECTION).document(str(self.id)).update({"reponses": new_reponses})
+        self.reponses = new_reponses
+
+        if is_own_message:
+            actor_name = target.get("author_name", "")
+            details = f"{actor_name} a modifié un de ses messages sur le dossier {self.reference}"
+        else:
+            editor = User.get(user_id)
+            actor_name = f"{editor.name} ({editor.role_label})" if editor else f"Utilisateur #{user_id}"
+            details = (
+                f"{actor_name} a modifié un message de {target.get('author_name', '?')} "
+                f"sur le dossier {self.reference}"
+            )
+        AuditLog.record(
+            action=AuditLog.ACTION_REPONSE_EDIT,
+            actor_name=actor_name,
+            details=details,
+        )
+        return True
 
     def delete_reponse(self, message_id, user_id, force=False):
         """Supprime UN message précis. Par défaut, seulement si `user_id`

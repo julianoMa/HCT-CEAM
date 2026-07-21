@@ -176,6 +176,10 @@
       </div>
 
       <div class="chat-message__context-menu" id="chat-message-context-menu" hidden>
+        <button type="button" class="chat-message__context-menu-item" data-context-menu-edit>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Modifier
+        </button>
         <button type="button" class="chat-message__context-menu-item chat-message__context-menu-item--danger" data-context-menu-delete>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>
           Supprimer
@@ -186,6 +190,24 @@
         <input type="hidden" name="action" value="delete_message">
         <input type="hidden" name="message_id" value="">
       </form>
+
+      <div class="modal-overlay" id="edit-message-modal">
+        <div class="modal">
+          <h3 class="modal__title">Modifier le message</h3>
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="edit_message">
+            <input type="hidden" name="message_id" id="edit-message-id" value="">
+            <div class="form-group">
+              <textarea name="content" id="edit-message-content" rows="4" required></textarea>
+            </div>
+            <div class="modal__actions">
+              <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+              <button type="submit" class="btn-primary">Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </div>
       {% if is_ceam_member %}
       <div class="chat-panel__lock-bar">
         <span>Autoriser le déclarant et les tiers à envoyer des messages</span>
@@ -235,12 +257,12 @@
                 {% endif %}
               </div>
               {% for r in group.entries %}
-              <div class="chat-message__item {{ 'chat-message__item--continued' if not loop.first }}" data-message-id="{{ r.message_id }}">
+              <div class="chat-message__item {{ 'chat-message__item--continued' if not loop.first }}" data-message-id="{{ r.message_id }}" data-content="{{ r.content }}">
                 {% if (r.type_label and r.type_label != "Message") or r.is_new %}
                 <div class="chat-message__item-badges">
                 </div>
                 {% endif %}
-                <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}</div>
+                <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}{% if r.edited %} <span class="chat-message__edited">(modifié)</span>{% endif %}</div>
                 {% if r.attachments %}
                 <div class="reponse-attachments">
                   {% for a in r.attachments %}
