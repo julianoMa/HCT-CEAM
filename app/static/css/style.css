@@ -3326,3 +3326,53 @@ button.is-submitting,
   font-style: italic;
   color: var(--text-muted);
 }
+
+/* ── Mentions "@Nom" (surlignage + autocomplétion) ── */
+
+.chat-mention {
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.mention-autocomplete {
+  position: absolute;
+  z-index: 250;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.mention-autocomplete.is-visible {
+  display: flex;
+}
+
+.mention-autocomplete__item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mention-autocomplete__item:hover,
+.mention-autocomplete__item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

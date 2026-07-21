@@ -21,6 +21,7 @@ class Notification:
     TYPE_STATUT_CHANGE = "statut_change"
     TYPE_REPONSE_AJOUTEE = "reponse_ajoutee"
     TYPE_TIERS_AJOUTE = "tiers_ajoute"
+    TYPE_MENTION = "mention"
 
     def __init__(self, id, user_id, type, message, rapport_id, read, created_at):
         self.id = id

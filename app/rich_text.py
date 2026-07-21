@@ -84,25 +84,53 @@ _CHAT_ITALIC_RE = re.compile(r'(?<!\*)\*([^*\n]+?)\*(?!\*)')
 _CHAT_BULLET_LINE_RE = re.compile(r'^[-*] +(.+)$')
 
 
-def _apply_chat_markdown_inline(escaped_text):
-    """Applique gras/italique/code sur un texte DÉJÀ échappé. L'ordre
-    (code, puis gras, puis italique) évite qu'un `**gras**` soit
-    partiellement confondu avec de l'italique."""
+def _build_mention_regex(names):
+    """Construit un pattern qui reconnaît "@Nom Complet" pour un ensemble
+    de noms connus (membres CEAM), le plus long d'abord pour qu'un nom
+    composé ("Jean Dupont") ne soit pas coupé par un nom plus court qui en
+    serait un préfixe ("Jean")."""
+    unique_names = sorted({n for n in (names or []) if n}, key=len, reverse=True)
+    if not unique_names:
+        return None
+    pattern = "|".join(re.escape(n) for n in unique_names)
+    return re.compile(r'@(' + pattern + r')\b')
+
+
+def _apply_mentions(escaped_text, mention_regex):
+    """Entoure les mentions reconnues d'un span dédié, sur du texte DÉJÀ
+    échappé — les noms comparés ne contiennent jamais de caractères HTML
+    spéciaux, donc comparer directement sur le texte échappé est sûr."""
+    if not mention_regex:
+        return escaped_text
+    return mention_regex.sub(lambda m: f'<span class="chat-mention">@{m.group(1)}</span>', escaped_text)
+
+
+def _apply_chat_markdown_inline(escaped_text, mention_regex=None):
+    """Applique gras/italique/code/mentions sur un texte DÉJÀ échappé.
+    L'ordre (code, puis gras, puis italique, puis mentions) évite qu'un
+    `**gras**` soit partiellement confondu avec de l'italique."""
     escaped_text = _CHAT_CODE_RE.sub(lambda m: f"<code>{m.group(1)}</code>", escaped_text)
     escaped_text = _CHAT_BOLD_RE.sub(lambda m: f"<strong>{m.group(1)}</strong>", escaped_text)
     escaped_text = _CHAT_ITALIC_RE.sub(lambda m: f"<em>{m.group(1)}</em>", escaped_text)
+    escaped_text = _apply_mentions(escaped_text, mention_regex)
     return escaped_text
 
 
-def render_chat_markdown(raw_text):
+def render_chat_markdown(raw_text, mention_names=None):
     """Comme render_rich_text (liens/images/YouTube auto-détectés), mais
     avec en plus un markdown léger : **gras**, *italique*, `code`, et les
     lignes commençant par "- " ou "* " transformées en liste à puces.
     Réservé à l'espace d'échanges — le reste du site (règlement,
-    description, preuves) continue d'utiliser render_rich_text tel quel."""
+    description, preuves) continue d'utiliser render_rich_text tel quel.
+
+    mention_names : liste optionnelle de noms complets de membres CEAM —
+    toute occurrence "@Nom Complet" dans le texte est alors surlignée
+    (voir _build_mention_regex). Ignoré si non fourni (comportement
+    inchangé)."""
     if not raw_text:
         return Markup("")
 
+    mention_regex = _build_mention_regex(mention_names)
     lines = raw_text.split("\n")
     rendered_lines = []
     in_list = False
@@ -113,12 +141,12 @@ def render_chat_markdown(raw_text):
             if not in_list:
                 rendered_lines.append("<ul class='chat-markdown-list'>")
                 in_list = True
-            rendered_lines.append(f"<li>{_render_line_with_links(bullet_match.group(1))}</li>")
+            rendered_lines.append(f"<li>{_render_line_with_links(bullet_match.group(1), mention_regex)}</li>")
             continue
         if in_list:
             rendered_lines.append("</ul>")
             in_list = False
-        rendered_lines.append(_render_line_with_links(line))
+        rendered_lines.append(_render_line_with_links(line, mention_regex))
 
     if in_list:
         rendered_lines.append("</ul>")
@@ -126,15 +154,15 @@ def render_chat_markdown(raw_text):
     return Markup("\n".join(rendered_lines))
 
 
-def _render_line_with_links(raw_line):
+def _render_line_with_links(raw_line, mention_regex=None):
     """Rend une seule ligne : découpe autour des URL (comme
-    render_rich_text), applique le markdown léger sur les segments de
-    texte, et laisse les URL gérées par _render_url tel quel."""
+    render_rich_text), applique le markdown léger + mentions sur les
+    segments de texte, et laisse les URL gérées par _render_url tel quel."""
     parts = []
     last_end = 0
     for m in URL_RE.finditer(raw_line):
         segment = str(escape(raw_line[last_end:m.start()]))
-        parts.append(_apply_chat_markdown_inline(segment))
+        parts.append(_apply_chat_markdown_inline(segment, mention_regex))
 
         raw_url = m.group(1)
         trimmed = raw_url.rstrip(_TRAILING_PUNCTUATION)
@@ -146,5 +174,5 @@ def _render_line_with_links(raw_line):
         last_end = m.end()
 
     tail = str(escape(raw_line[last_end:]))
-    parts.append(_apply_chat_markdown_inline(tail))
+    parts.append(_apply_chat_markdown_inline(tail, mention_regex))
     return "".join(parts)

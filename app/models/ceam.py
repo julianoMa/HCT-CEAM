@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -940,6 +941,22 @@ class Rapport:
                     message=f"{author_name} a ajouté un message ({type_}) sur le dossier {self.reference}.",
                     rapport_id=self.id,
                 )
+        # Mentions "@Nom Complet" -> notification dédiée, distincte de la
+        # notification "nouveau message" ci-dessus. Réservé aux messages
+        # rédigés par un membre CEAM : ce sont les seuls destinataires
+        # possibles d'une mention (on ne notifie jamais un membre CEAM à
+        # cause d'un texte tapé par un déclarant ou un tiers externe).
+        if author_is_ceam:
+            mentioned = self._extract_mentions(content, author_id)
+            for member in mentioned:
+                Notification.create(
+                    user_id=member.id,
+                    type=Notification.TYPE_MENTION,
+                    message=f"{author_name} t'a mentionné(e) dans un message sur le dossier {self.reference}.",
+                    rapport_id=self.id,
+                )
+            if mentioned:
+                self._notifier_mentions(mentioned, reponse)
         return reponse
 
     def ensure_message_ids(self):
@@ -1142,6 +1159,39 @@ class Rapport:
             url=self._detail_url(),
         )
         discord_ids = [membre.discord_id for membre in User.list_ceam_members()]
+        send_discord_dm_bulk(discord_ids, embed=embed)
+
+    def _extract_mentions(self, content, author_id):
+        """Retourne les membres CEAM (hors auteur) dont le nom complet
+        apparaît sous la forme "@Nom Complet" dans le contenu du message.
+        Correspondance exacte sur le nom entier (voir _build_mention_regex
+        côté rendu) — pas de préfixe partiel, pour éviter de notifier
+        "Jean" à cause d'un message qui mentionne "Jean Dupont"."""
+        if not content or "@" not in content:
+            return []
+        from app.models.user import User  # import différé : évite un cycle d'import
+
+        members = [m for m in User.list_ceam_members() if m.id != author_id and m.name]
+        mentioned = []
+        for member in members:
+            if re.search(r'@' + re.escape(member.name) + r'\b', content):
+                mentioned.append(member)
+        return mentioned
+
+    def _notifier_mentions(self, mentioned_members, reponse):
+        """MP Discord dédié aux membres CEAM explicitement mentionnés
+        (@Nom) dans un message — distinct de la notification générique de
+        nouveau message, pour qu'ils comprennent qu'on les a personnellement
+        interpellés, pas juste qu'il y a du nouveau sur le dossier."""
+        from app.notifications import build_embed, send_discord_dm_bulk
+
+        embed = build_embed(
+            title=f"🔔 Tu as été mentionné(e) — dossier {self.reference}",
+            description=f"{reponse['author_name']} t'a mentionné(e) dans un message.",
+            fields=[{"name": "Message", "value": reponse["content"][:200], "inline": False}],
+            url=self._detail_url(),
+        )
+        discord_ids = [m.discord_id for m in mentioned_members]
         send_discord_dm_bulk(discord_ids, embed=embed)
 
     def _notifier_message(self, reponse, author_id, author_is_ceam):

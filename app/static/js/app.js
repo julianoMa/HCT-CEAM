@@ -693,6 +693,149 @@
     updateProgress();
   }
 
+  // ── Mentions "@Nom" dans les messages internes (échanges + réponse) ──
+  // Un seul menu déroulant partagé (créé à la volée, ajouté au <body>)
+  // réutilisé pour n'importe quelle zone de texte marquée
+  // .js-mention-input — plus simple qu'un menu par zone de texte, et
+  // évite les soucis de z-index avec les modals (réponse officielle).
+  (function initMentionAutocomplete() {
+    const dataEl = document.getElementById("ceam-mentionable-members");
+    if (!dataEl) return;
+
+    let memberNames = [];
+    try {
+      memberNames = JSON.parse(dataEl.textContent) || [];
+    } catch (e) {
+      return;
+    }
+    if (!memberNames.length) return;
+
+    const inputs = Array.from(document.querySelectorAll("textarea.js-mention-input"));
+    if (!inputs.length) return;
+
+    const menu = document.createElement("div");
+    menu.className = "mention-autocomplete";
+    menu.setAttribute("role", "listbox");
+    document.body.appendChild(menu);
+
+    let activeInput = null;
+    let activeMatches = [];
+    let activeIndex = 0;
+    let mentionStart = -1; // position du "@" déclencheur dans activeInput.value
+
+    const closeMenu = () => {
+      menu.classList.remove("is-visible");
+      activeInput = null;
+      activeMatches = [];
+      mentionStart = -1;
+    };
+
+    const renderMenu = () => {
+      menu.innerHTML = "";
+      activeMatches.forEach((name, i) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "mention-autocomplete__item" + (i === activeIndex ? " is-active" : "");
+        item.textContent = name;
+        item.addEventListener("mousedown", (e) => {
+          // mousedown (pas click) pour agir AVANT que le textarea ne
+          // perde le focus (blur), qui sinon fermerait le menu en premier.
+          e.preventDefault();
+          selectMention(name);
+        });
+        menu.appendChild(item);
+      });
+    };
+
+    const positionMenu = (input) => {
+      const rect = input.getBoundingClientRect();
+      menu.style.left = `${rect.left + window.scrollX}px`;
+      menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
+      menu.style.width = `${Math.min(rect.width, 320)}px`;
+    };
+
+    const selectMention = (name) => {
+      if (!activeInput || mentionStart < 0) return;
+      const value = activeInput.value;
+      const caret = activeInput.selectionStart;
+      const before = value.slice(0, mentionStart);
+      const after = value.slice(caret);
+      const inserted = `@${name} `;
+      activeInput.value = before + inserted + after;
+      const newCaret = before.length + inserted.length;
+      activeInput.focus();
+      activeInput.setSelectionRange(newCaret, newCaret);
+      // Un input "réel" pour que le reste du JS (ex: brouillon) capte le
+      // changement de contenu comme s'il avait été tapé.
+      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      closeMenu();
+    };
+
+    const updateMatches = (input) => {
+      const value = input.value;
+      const caret = input.selectionStart;
+      const uptoCaret = value.slice(0, caret);
+      const triggerIndex = uptoCaret.lastIndexOf("@");
+      if (triggerIndex === -1) return closeMenu();
+
+      const between = uptoCaret.slice(triggerIndex + 1, caret);
+      // Le texte entre "@" et le curseur ne doit contenir aucun espace —
+      // sinon ce n'est plus une mention en cours de frappe.
+      if (/\s/.test(between)) return closeMenu();
+      // Le "@" doit démarrer un mot (début de texte, ou précédé d'un
+      // espace) pour ne pas se déclencher sur un email ou un pseudo
+      // Discord collé (ex: "contact@exemple.com").
+      const charBefore = triggerIndex > 0 ? value[triggerIndex - 1] : "";
+      if (charBefore && !/\s/.test(charBefore)) return closeMenu();
+
+      const query = between.toLowerCase();
+      const matches = memberNames
+        .filter((name) => name.toLowerCase().includes(query))
+        .slice(0, 6);
+      if (!matches.length) return closeMenu();
+
+      activeInput = input;
+      activeMatches = matches;
+      activeIndex = 0;
+      mentionStart = triggerIndex;
+      positionMenu(input);
+      renderMenu();
+      menu.classList.add("is-visible");
+    };
+
+    inputs.forEach((input) => {
+      input.addEventListener("input", () => updateMatches(input));
+      input.addEventListener("click", () => updateMatches(input));
+      input.addEventListener("blur", () => {
+        // Délai court : laisse le mousedown d'un item du menu s'exécuter
+        // avant que le menu ne se ferme (sinon le clic n'atteint jamais
+        // le bouton, déjà retiré du DOM par la fermeture).
+        window.setTimeout(closeMenu, 120);
+      });
+      input.addEventListener("keydown", (e) => {
+        if (activeInput !== input || !activeMatches.length) return;
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % activeMatches.length;
+          renderMenu();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + activeMatches.length) % activeMatches.length;
+          renderMenu();
+        } else if (e.key === "Enter" || e.key === "Tab") {
+          e.preventDefault();
+          selectMention(activeMatches[activeIndex]);
+        } else if (e.key === "Escape") {
+          closeMenu();
+        }
+      });
+    });
+
+    window.addEventListener("scroll", () => {
+      if (activeInput) positionMenu(activeInput);
+    }, true);
+  })();
+
   // ── Sidebar réductible ──
   const sidebarToggle = document.getElementById("sidebar-collapse-toggle");
   if (sidebarToggle) {

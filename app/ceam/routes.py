@@ -272,6 +272,13 @@ def detail(rapport_id):
         excluded_ids = {rapport.owner_id, *rapport.tiers_ids}
         available_users = [u for u in User.list_all() if u.id not in excluded_ids]
 
+    # Membres CEAM mentionnables via "@Nom" dans les messages (voir
+    # add_reponse/_extract_mentions) — vide pour un déclarant/tiers : la
+    # fonctionnalité (autocomplétion + surlignage) est réservée à la
+    # commission, un externe n'a pas à connaître la liste des membres.
+    ceam_members_mentionable = [m for m in User.list_ceam_members() if m.id != current_user.id] if is_ceam_member else []
+    ceam_member_names = [m.name for m in ceam_members_mentionable]
+
     # Le compteur de messages non lus, et le marquage individuel de
     # chaque message comme "nouveau" pour cette personne, sont calculés
     # AVANT de tout marquer comme lu juste après — conversations_for lit
@@ -522,6 +529,8 @@ def detail(rapport_id):
         tiers_users=tiers_users,
         owner_user=owner_user,
         available_users=available_users,
+        ceam_members_mentionable=ceam_members_mentionable,
+        ceam_member_names=ceam_member_names,
         status_steps=status_steps,
         branch_statuses=branch_statuses,
         stepper_theme=stepper_theme,

@@ -36,7 +36,7 @@
                 <div class="chat-message__item-badges">
                 </div>
                 {% endif %}
-                <div class="prose prose--clear rich-text">{{ r.content | chat_markdown }}{% if r.edited %} <span class="chat-message__edited">(modifié)</span>{% endif %}</div>
+                <div class="prose prose--clear rich-text">{{ r.content | chat_markdown(ceam_member_names) }}{% if r.edited %} <span class="chat-message__edited">(modifié)</span>{% endif %}</div>
                 {% if r.attachments %}
                 <div class="reponse-attachments">
                   {% for a in r.attachments %}

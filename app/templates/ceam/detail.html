@@ -221,6 +221,10 @@
       </div>
       {% endif %}
 
+      {% if is_ceam_member %}
+      <script type="application/json" id="ceam-mentionable-members">{{ ceam_members_mentionable | map(attribute='name') | list | tojson }}</script>
+      {% endif %}
+
       {% for conv in conversations %}
       <div class="chat-conversation-panel {{ 'is-active' if loop.first }}" data-conversation-panel="{{ conv.key }}">
         <div class="chat-panel__messages" data-chat-scroll>
@@ -232,7 +236,7 @@
           {{ message_form.hidden_tag() }}
           <input type="hidden" name="action" value="message">
           <input type="hidden" name="thread" value="{{ conv.key }}">
-          {{ message_form.content(rows=2, placeholder="Écrire un message…") }}
+          {{ message_form.content(rows=2, placeholder="Écrire un message…", **({"class": "js-mention-input"} if is_ceam_member else {})) }}
           <p class="chat-panel__markdown-hint">**gras**, *italique*, `code`, "- " pour une liste — <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> pour envoyer</p>
           <div class="chat-panel__pending-attachments" data-pending-attachments></div>
           <div class="chat-panel__composer-actions">
@@ -451,7 +455,7 @@
         {{ reponse_form.type.label }}{{ reponse_form.type(placeholder="Ex: Issue de l'examen préliminaire, Procès-verbal, Délibéré…") }}
       </div>
       <div class="form-group" style="margin-bottom: 1rem;">
-        {{ reponse_form.content.label }}{{ reponse_form.content(rows=6, placeholder="Contenu transmis au plaignant…") }}
+        {{ reponse_form.content.label }}{{ reponse_form.content(rows=6, placeholder="Contenu transmis au plaignant…", **{"class": "js-mention-input"}) }}
       </div>
       <div class="form-group" style="margin-bottom: 1.25rem;">
         {{ reponse_form.attachments.label }}
