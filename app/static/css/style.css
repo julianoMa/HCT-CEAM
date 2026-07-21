@@ -2706,10 +2706,23 @@ button.is-submitting,
 }
 
 .chat-message__time {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 6px;
+}
+
+.chat-message__seen {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.chat-message__seen.is-seen {
+  color: var(--accent);
 }
 
 

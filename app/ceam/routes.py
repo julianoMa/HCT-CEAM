@@ -187,6 +187,7 @@ def detail(rapport_id):
     rapport = Rapport.get(rapport_id)
     if rapport is None:
         abort(404)
+    rapport.ensure_message_ids()
 
     is_owner = rapport.owner_id == current_user.id
     is_tiers = current_user.id in rapport.tiers_ids

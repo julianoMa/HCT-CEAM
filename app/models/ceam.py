@@ -291,6 +291,9 @@ class Rapport:
         def build_thread(key, label):
             thread_key = "everyone" if key == "everyone" else str(key)
             last_read_ts = (self.last_read.get(thread_key) or {}).get(user_key, "")
+            other_last_reads = [
+                ts for uid, ts in (self.last_read.get(thread_key) or {}).items() if uid != user_key
+            ]
             if key == "everyone":
                 messages = [m for m in all_messages if m["visibility"] == "everyone"]
             else:
@@ -300,6 +303,15 @@ class Rapport:
                 m["is_new"] = m["sent_at_raw"] > last_read_ts and m["author_id"] != user_id
                 if m["is_new"]:
                     unread += 1
+                # Indicateur de "vu" (à la WhatsApp) : uniquement pertinent
+                # sur MES PROPRES messages — vu = au moins une autre
+                # personne ayant accès à ce fil a lu jusqu'à ce message ou
+                # plus tard (pas besoin que TOUT LE MONDE l'ait lu, une
+                # commission peut avoir plusieurs membres).
+                if m["author_id"] == user_id:
+                    m["is_seen"] = any(ts >= m["sent_at_raw"] for ts in other_last_reads)
+                else:
+                    m["is_seen"] = None
             groups = _group_chat_messages(messages, group_gap_minutes)
             return {"key": key, "label": label, "messages": messages, "groups": groups, "unread_count": unread}
 
@@ -916,6 +928,27 @@ class Rapport:
                     rapport_id=self.id,
                 )
         return reponse
+
+    def ensure_message_ids(self):
+        """Attribue un message_id aux messages plus anciens qui n'en ont
+        pas encore (envoyés avant l'introduction de la suppression de
+        message) — sans ça, ils ne sont jamais identifiables
+        individuellement et ne peuvent donc jamais être supprimés. Ne
+        réécrit le tableau que s'il y a réellement quelque chose à
+        migrer ; ne fait rien (et ne coûte rien) une fois que tous les
+        messages en ont déjà un."""
+        changed = False
+        updated = []
+        for r in self.reponses:
+            if not r.get("message_id"):
+                r = {**r, "message_id": str(uuid.uuid4())}
+                changed = True
+            updated.append(r)
+        if changed:
+            db = get_db()
+            db.collection(COLLECTION).document(str(self.id)).update({"reponses": updated})
+            self.reponses = updated
+        return changed
 
     def delete_reponse(self, message_id, user_id, force=False):
         """Supprime UN message précis. Par défaut, seulement si `user_id`
