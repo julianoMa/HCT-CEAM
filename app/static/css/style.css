@@ -3172,3 +3172,49 @@ button.is-submitting,
   color: var(--text-muted);
   margin: 0;
 }
+
+/* ── Suppression d'un message (clic droit) ── */
+
+.chat-message__delete-form {
+  display: none;
+}
+
+.chat-message--mine .chat-message__bubble {
+  cursor: context-menu;
+}
+
+.chat-message__context-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+}
+
+.chat-message__context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.chat-message__context-menu-item:hover {
+  background: var(--border-subtle);
+}
+
+.chat-message__context-menu-item--danger {
+  color: var(--danger-text);
+}

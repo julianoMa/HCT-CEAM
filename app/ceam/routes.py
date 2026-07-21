@@ -289,6 +289,17 @@ def detail(rapport_id):
         )
         return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
 
+    if action == "delete_message":
+        message_id = request.form.get("message_id", "")
+        # rapport.delete_reponse() revérifie lui-même que current_user.id
+        # est bien l'auteur du message — ce contrôle ici n'est qu'un
+        # message d'erreur plus parlant, pas la seule ligne de défense.
+        if message_id and rapport.delete_reponse(message_id, current_user.id):
+            flash("Message supprimé.", "success")
+        else:
+            flash("Impossible de supprimer ce message.", "danger")
+        return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))
+
     if action == "message" and rapport.messages_locked and not is_ceam_member:
         flash("La commission a désactivé l'envoi de messages sur ce dossier.", "danger")
         return redirect(url_for("ceam.detail", rapport_id=rapport.id, _anchor="echanges"))

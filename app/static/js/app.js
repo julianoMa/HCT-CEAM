@@ -705,4 +705,70 @@
       }
     });
   });
+
+  // ── Suppression d'un message (clic droit -> menu -> confirmation) ──
+  // Réservé aux messages qu'on a soi-même écrits (data-message-id n'est
+  // même pas présent sur les anciens messages envoyés avant cette
+  // fonctionnalité, ni sur les réponses officielles "Commission CEAM" —
+  // ils ne sont donc jamais proposés à la suppression ici. Le serveur
+  // revérifie de toute façon qui est l'auteur avant de supprimer quoi
+  // que ce soit ; ce menu n'est qu'un raccourci, pas la sécurité.
+  const contextMenu = document.getElementById("chat-message-context-menu");
+  const deleteForm = document.getElementById("chat-delete-message-form");
+  if (contextMenu && deleteForm) {
+    let targetMessageId = null;
+
+    const hideContextMenu = () => {
+      contextMenu.hidden = true;
+      targetMessageId = null;
+    };
+
+    document.querySelectorAll(".chat-message__bubble").forEach((bubble) => {
+      bubble.addEventListener("contextmenu", (event) => {
+        const isMine = !!bubble.closest(".chat-message--mine");
+        if (!isMine) return; // pas notre carte
+
+        // Cible le message précis sous le curseur si le clic droit tombe
+        // dedans (utile quand plusieurs messages sont regroupés dans la
+        // même carte) ; sinon (survol de l'en-tête, d'un espace vide...),
+        // retombe sur le dernier message de la carte, le plus visible.
+        const items = bubble.querySelectorAll(".chat-message__item");
+        const clickedItem = event.target.closest(".chat-message__item");
+        const targetItem = clickedItem || items[items.length - 1];
+        const messageId = targetItem ? targetItem.dataset.messageId : null;
+        if (!messageId) return; // trop ancien pour être supprimable
+
+        event.preventDefault();
+        targetMessageId = messageId;
+
+        const menuWidth = 180;
+        const menuHeight = 44;
+        let x = event.clientX;
+        let y = event.clientY;
+        if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
+        if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 8;
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
+        contextMenu.hidden = false;
+      });
+    });
+
+    document.addEventListener("click", hideContextMenu);
+    document.addEventListener("contextmenu", (event) => {
+      if (!event.target.closest(".chat-message__bubble")) hideContextMenu();
+    });
+    window.addEventListener("scroll", hideContextMenu, true);
+    window.addEventListener("resize", hideContextMenu);
+
+    const deleteButton = contextMenu.querySelector("[data-context-menu-delete]");
+    deleteButton.addEventListener("click", () => {
+      const messageId = targetMessageId;
+      hideContextMenu();
+      if (!messageId) return;
+      const confirmed = window.confirm("Supprimer définitivement ce message ? Cette action est irréversible.");
+      if (!confirmed) return;
+      deleteForm.querySelector('[name="message_id"]').value = messageId;
+      deleteForm.submit();
+    });
+  }
 })();
