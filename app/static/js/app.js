@@ -527,9 +527,13 @@
     // Champs utilisés uniquement pour détecter "le formulaire a-t-il déjà
     // du contenu réel ?" — on exclut volontairement les select comme
     // l'affectation, qui ont toujours une valeur par défaut (jamais
-    // vraiment vides) et fausseraient la détection.
+    // vraiment vides) et fausseraient la détection. On exclut aussi
+    // plaignant_last_name/plaignant_first_name : ces deux champs sont
+    // systématiquement pré-remplis par le serveur à partir du pseudo
+    // Discord (voir app/ceam/routes.py), donc quasiment jamais vides —
+    // les inclure ici empêchait la bannière de brouillon de s'afficher
+    // pour la quasi-totalité des utilisateurs.
     const EMPTINESS_CHECK_FIELDS = [
-      "plaignant_last_name", "plaignant_first_name",
       "concerne_last_name", "concerne_first_name",
       "location", "witness", "description", "proof",
     ];
@@ -610,6 +614,83 @@
 
     // À l'envoi du formulaire, le brouillon local n'a plus lieu d'être.
     depotForm.addEventListener("submit", clearDraft);
+  }
+
+  // ── Formulaire de dépôt "gamifié" en étapes plein écran ──
+  // Chaque section (.wizard-step) prend toute la place et disparaît
+  // complètement avant que la suivante n'apparaisse (transition
+  // séquentielle, pas de chevauchement) — avec une barre de progression
+  // en haut du formulaire qui reflète l'avancement.
+  const wizardForm = document.querySelector("[data-wizard]");
+  if (wizardForm) {
+    const steps = Array.from(wizardForm.querySelectorAll("[data-wizard-step]"));
+    const progressFill = document.getElementById("wizard-progress-fill");
+    const progressLabel = document.getElementById("wizard-progress-label");
+    const ANIMATION_MS = 350;
+    let currentIndex = 0;
+    let isAnimating = false;
+
+    const updateProgress = () => {
+      const percent = ((currentIndex + 1) / steps.length) * 100;
+      if (progressFill) progressFill.style.width = `${percent}%`;
+      if (progressLabel) {
+        const title = steps[currentIndex].dataset.title || "";
+        progressLabel.textContent = `Étape ${currentIndex + 1} / ${steps.length} — ${title}`;
+      }
+    };
+
+    // On ne valide "à la main" que les champs marqués required — la
+    // validation complète (Optional/DataRequired réels) reste faite
+    // côté serveur, ceci n'est qu'un garde-fou pour éviter d'avancer
+    // avec une étape manifestement incomplète.
+    const validateStep = (step) => {
+      const fields = step.querySelectorAll("input[required], select[required], textarea[required]");
+      for (const field of fields) {
+        if (!field.checkValidity()) {
+          field.reportValidity();
+          return false;
+        }
+      }
+      return true;
+    };
+
+    const goToStep = (targetIndex, direction) => {
+      if (isAnimating || targetIndex < 0 || targetIndex >= steps.length || targetIndex === currentIndex) return;
+      isAnimating = true;
+
+      const outgoing = steps[currentIndex];
+      const incoming = steps[targetIndex];
+      const exitClass = direction === "next" ? "is-exiting-forward" : "is-exiting-back";
+      const enterClass = direction === "next" ? "is-entering-forward" : "is-entering-back";
+
+      wizardForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      outgoing.classList.add(exitClass);
+
+      window.setTimeout(() => {
+        outgoing.classList.remove("is-active", exitClass);
+        incoming.classList.add("is-active", enterClass);
+        window.setTimeout(() => {
+          incoming.classList.remove(enterClass);
+          isAnimating = false;
+        }, ANIMATION_MS);
+      }, ANIMATION_MS);
+
+      currentIndex = targetIndex;
+      updateProgress();
+    };
+
+    steps.forEach((step, index) => {
+      step.classList.toggle("is-active", index === 0);
+      step.querySelector("[data-wizard-next]")?.addEventListener("click", () => {
+        if (!validateStep(step)) return;
+        goToStep(index + 1, "next");
+      });
+      step.querySelector("[data-wizard-prev]")?.addEventListener("click", () => {
+        goToStep(index - 1, "prev");
+      });
+    });
+
+    updateProgress();
   }
 
   // ── Sidebar réductible ──

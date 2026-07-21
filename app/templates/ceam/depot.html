@@ -4,7 +4,7 @@
 {% block content %}
 {% call page_header("Espace Personnel", "Déposer un rapport", "Remplis le formulaire ci-dessous pour soumettre un incident à la commission.") %}{% endcall %}
 
-<form method="post" class="form-sections" enctype="multipart/form-data" id="depot-form">
+<form method="post" class="form-sections wizard-form" enctype="multipart/form-data" id="depot-form" data-wizard>
   {{ form.hidden_tag() }}
 
   <div class="draft-banner" id="draft-banner">
@@ -16,103 +16,158 @@
     </div>
   </div>
 
-  <div class="card card--padded form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </span>
-      Plaignant
-    </h2>
-    <div class="form-grid">
-      <div class="form-group">{{ form.plaignant_last_name.label }}{{ form.plaignant_last_name() }}</div>
-      <div class="form-group">{{ form.plaignant_first_name.label }}{{ form.plaignant_first_name() }}</div>
-      <div class="form-group">{{ form.plaignant_rank.label }}{{ form.plaignant_rank() }}</div>
-      <div class="form-group">{{ form.plaignant_affectation.label }}{{ form.plaignant_affectation() }}</div>
+  <div class="wizard-progress" id="wizard-progress">
+    <div class="wizard-progress__track">
+      <div class="wizard-progress__fill" id="wizard-progress-fill"></div>
     </div>
+    <div class="wizard-progress__label" id="wizard-progress-label"></div>
   </div>
 
-  <div class="card card--padded form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
-      </span>
-      Mis en cause
-    </h2>
-    <div class="form-grid">
-      <div class="form-group">{{ form.concerne_last_name.label }}{{ form.concerne_last_name() }}</div>
-      <div class="form-group">{{ form.concerne_first_name.label }}{{ form.concerne_first_name() }}</div>
-      <div class="form-group">{{ form.concerne_rank.label }}{{ form.concerne_rank() }}</div>
-      <div class="form-group">{{ form.concerne_affectation.label }}{{ form.concerne_affectation() }}</div>
-    </div>
-  </div>
+  <div class="wizard-steps">
 
-  <div class="card card--padded form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-      </span>
-      Circonstances de l'incident
-    </h2>
-    <div class="form-grid">
-      <div class="form-group">{{ form.event_date.label }}{{ form.event_date() }}</div>
-      <div class="form-group">{{ form.event_hour.label }}{{ form.event_hour() }}</div>
-      <div class="form-group form-group--full">{{ form.location.label }}{{ form.location(placeholder="Ex: Bloc opératoire n°2, TMC…") }}</div>
-    </div>
-  </div>
-
-  <div class="card card--padded form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6M9 9h1"/></svg>
-      </span>
-      Exposé des faits
-    </h2>
-    <div class="form-grid form-grid--single">
-      <div class="form-group">
-        {{ form.description.label }}
-        {{ form.description(rows=8, placeholder="Décris les faits dans l'ordre où ils se sont produits, sans interprétation ni jugement de valeur…") }}
+    <section class="wizard-step" data-wizard-step data-title="Plaignant">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          Plaignant
+        </h2>
+        <div class="form-grid">
+          <div class="form-group">{{ form.plaignant_last_name.label }}{{ form.plaignant_last_name(required=True) }}</div>
+          <div class="form-group">{{ form.plaignant_first_name.label }}{{ form.plaignant_first_name(required=True) }}</div>
+          <div class="form-group">{{ form.plaignant_rank.label }}{{ form.plaignant_rank(required=True) }}</div>
+          <div class="form-group">{{ form.plaignant_affectation.label }}{{ form.plaignant_affectation() }}</div>
+        </div>
       </div>
-    </div>
-  </div>
+      <div class="wizard-nav">
+        <span></span>
+        <button type="button" class="btn-primary" data-wizard-next>Suivant</button>
+      </div>
+    </section>
 
-  <div class="card card--padded form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-      </span>
-      Témoins de l'incident
-    </h2>
-    <div class="form-grid form-grid--single">
-      <div class="form-group">{{ form.witness.label }}{{ form.witness(placeholder="Nom(s) des témoins éventuels, ou 'Aucun'…") }}</div>
-    </div>
-  </div>
+    <section class="wizard-step" data-wizard-step data-title="Mis en cause">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+          </span>
+          Mis en cause
+        </h2>
+        <div class="form-grid">
+          <div class="form-group">{{ form.concerne_last_name.label }}{{ form.concerne_last_name(required=True) }}</div>
+          <div class="form-group">{{ form.concerne_first_name.label }}{{ form.concerne_first_name(required=True) }}</div>
+          <div class="form-group">{{ form.concerne_rank.label }}{{ form.concerne_rank(required=True) }}</div>
+          <div class="form-group">{{ form.concerne_affectation.label }}{{ form.concerne_affectation() }}</div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button type="button" class="btn-secondary" data-wizard-prev>Précédent</button>
+        <button type="button" class="btn-primary" data-wizard-next>Suivant</button>
+      </div>
+    </section>
 
-  <div class="card card--padded form-section">
-    <h2 class="form-section__title">
-      <span class="form-section__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-      </span>
-      Preuves
-    </h2>
-    <p class="prose" style="margin-bottom: 0.75rem;">Liens ou fichiers à l'appui du rapport (facultatif).</p>
-    <button type="button" class="btn-secondary" data-open-modal="preuves-modal">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-      Ajouter des preuves
-    </button>
-  </div>
+    <section class="wizard-step" data-wizard-step data-title="Circonstances de l'incident">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </span>
+          Circonstances de l'incident
+        </h2>
+        <div class="form-grid">
+          <div class="form-group">{{ form.event_date.label }}{{ form.event_date(required=True) }}</div>
+          <div class="form-group">{{ form.event_hour.label }}{{ form.event_hour(required=True) }}</div>
+          <div class="form-group form-group--full">{{ form.location.label }}{{ form.location(placeholder="Ex: Bloc opératoire n°2, TMC…", required=True) }}</div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button type="button" class="btn-secondary" data-wizard-prev>Précédent</button>
+        <button type="button" class="btn-primary" data-wizard-next>Suivant</button>
+      </div>
+    </section>
 
-  <div class="card card--padded form-section">
-    <label class="ceam-checkbox">
-      {{ form.certification(required=True) }}
-      <span>{{ form.certification.label.text }}</span>
-    </label>
-  </div>
+    <section class="wizard-step" data-wizard-step data-title="Exposé des faits">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6M9 9h1"/></svg>
+          </span>
+          Exposé des faits
+        </h2>
+        <div class="form-grid form-grid--single">
+          <div class="form-group">
+            {{ form.description.label }}
+            {{ form.description(rows=8, placeholder="Décris les faits dans l'ordre où ils se sont produits, sans interprétation ni jugement de valeur…", required=True) }}
+          </div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button type="button" class="btn-secondary" data-wizard-prev>Précédent</button>
+        <button type="button" class="btn-primary" data-wizard-next>Suivant</button>
+      </div>
+    </section>
 
-  <div class="form-actions form-actions--plain">
-    <button type="submit">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-      Envoyer le rapport
-    </button>
+    <section class="wizard-step" data-wizard-step data-title="Témoins de l'incident">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          </span>
+          Témoins de l'incident
+        </h2>
+        <div class="form-grid form-grid--single">
+          <div class="form-group">{{ form.witness.label }}{{ form.witness(placeholder="Nom(s) des témoins éventuels, ou 'Aucun'…") }}</div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button type="button" class="btn-secondary" data-wizard-prev>Précédent</button>
+        <button type="button" class="btn-primary" data-wizard-next>Suivant</button>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-step data-title="Preuves">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </span>
+          Preuves
+        </h2>
+        <p class="prose" style="margin-bottom: 0.75rem;">Liens ou fichiers à l'appui du rapport (facultatif).</p>
+        <button type="button" class="btn-secondary" data-open-modal="preuves-modal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Ajouter des preuves
+        </button>
+      </div>
+      <div class="wizard-nav">
+        <button type="button" class="btn-secondary" data-wizard-prev>Précédent</button>
+        <button type="button" class="btn-primary" data-wizard-next>Suivant</button>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-step data-title="Certification">
+      <div class="card card--padded form-section">
+        <h2 class="form-section__title">
+          <span class="form-section__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+          </span>
+          Certification
+        </h2>
+        <label class="ceam-checkbox">
+          {{ form.certification(required=True) }}
+          <span>{{ form.certification.label.text }}</span>
+        </label>
+      </div>
+      <div class="wizard-nav">
+        <button type="button" class="btn-secondary" data-wizard-prev>Précédent</button>
+        <button type="submit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Envoyer le rapport
+        </button>
+      </div>
+    </section>
+
   </div>
 
   <div class="modal-overlay" id="preuves-modal" aria-hidden="true">
@@ -134,4 +189,5 @@
     </div>
   </div>
 </form>
+
 {% endblock %}
