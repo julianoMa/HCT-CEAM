@@ -16,11 +16,14 @@
     </div>
   </div>
 
-  <div class="wizard-progress" id="wizard-progress">
+  <div class="wizard-progress card card--padded" id="wizard-progress">
     <div class="wizard-progress__track">
       <div class="wizard-progress__fill" id="wizard-progress-fill"></div>
+      <div class="wizard-progress__dots" id="wizard-progress-dots"></div>
     </div>
-    <div class="wizard-progress__label" id="wizard-progress-label"></div>
+    <div class="wizard-progress__footer">
+      <div class="wizard-progress__label" id="wizard-progress-label"></div>
+    </div>
   </div>
 
   <div class="wizard-steps">
@@ -146,15 +149,17 @@
       </div>
     </section>
 
-    <section class="wizard-step" data-wizard-step data-title="Certification">
+    <section class="wizard-step" data-wizard-step data-wizard-recap data-title="Relire et envoyer">
       <div class="card card--padded form-section">
         <h2 class="form-section__title">
           <span class="form-section__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
           </span>
-          Certification
+          Relire avant d'envoyer
         </h2>
-        <label class="ceam-checkbox">
+        <p class="prose" style="margin-bottom: 1rem;">Vérifie que tout est correct avant l'envoi — clique sur "Modifier" pour revenir sur une section.</p>
+        <div class="wizard-summary" id="wizard-summary"></div>
+        <label class="ceam-checkbox" style="margin-top: 1.5rem;">
           {{ form.certification(required=True) }}
           <span>{{ form.certification.label.text }}</span>
         </label>

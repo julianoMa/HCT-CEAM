@@ -3011,10 +3011,10 @@ button.is-submitting,
 }
 
 .wizard-progress__track {
+  position: relative;
   height: 8px;
   border-radius: 999px;
   background: var(--border);
-  overflow: hidden;
 }
 
 .wizard-progress__fill {
@@ -3025,11 +3025,57 @@ button.is-submitting,
   transition: width 0.35s ease;
 }
 
+.wizard-progress__footer {
+  margin-top: 14px;
+}
+
 .wizard-progress__label {
-  margin-top: 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+.wizard-progress__dots {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.wizard-progress__dot {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--border);
+  cursor: not-allowed;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.wizard-progress__dot:not(:disabled) {
+  cursor: pointer;
+}
+
+.wizard-progress__dot:not(:disabled):hover {
+  background: var(--accent-hover);
+  transform: scale(1.25);
+}
+
+.wizard-progress__dot.is-completed {
+  background: var(--accent);
+}
+
+.wizard-progress__dot.is-current {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .wizard-steps {
@@ -3053,6 +3099,59 @@ button.is-submitting,
   align-items: center;
   gap: 12px;
   margin-top: 1.5rem;
+}
+
+.wizard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wizard-summary__section {
+  padding: 1rem 1.1rem;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.wizard-summary__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0.6rem;
+}
+
+.wizard-summary__section-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wizard-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.wizard-summary__row:first-of-type {
+  border-top: none;
+}
+
+.wizard-summary__label {
+  color: var(--text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.wizard-summary__value {
+  color: var(--text);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 @keyframes wizard-in-forward {

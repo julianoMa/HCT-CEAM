@@ -620,23 +620,124 @@
   // Chaque section (.wizard-step) prend toute la place et disparaît
   // complètement avant que la suivante n'apparaisse (transition
   // séquentielle, pas de chevauchement) — avec une barre de progression
-  // en haut du formulaire qui reflète l'avancement.
+  // en haut du formulaire qui reflète l'avancement, des points cliquables
+  // pour revenir directement à une étape déjà atteinte, et une dernière
+  // étape récapitulative qui relit les champs remplis avant l'envoi.
   const wizardForm = document.querySelector("[data-wizard]");
   if (wizardForm) {
     const steps = Array.from(wizardForm.querySelectorAll("[data-wizard-step]"));
     const progressFill = document.getElementById("wizard-progress-fill");
     const progressLabel = document.getElementById("wizard-progress-label");
+    const progressDots = document.getElementById("wizard-progress-dots");
+    const summaryEl = document.getElementById("wizard-summary");
     const ANIMATION_MS = 350;
     let currentIndex = 0;
+    let furthestVisited = 0;
     let isAnimating = false;
 
+    // Groupes de champs à relire à l'étape "Relire avant d'envoyer",
+    // avec pour chacun le numéro de l'étape où le modifier. Les valeurs
+    // sont lues directement dans le DOM au moment de l'affichage du
+    // récapitulatif, pas dupliquées ici.
+    const SUMMARY_SECTIONS = [
+      { step: 0, label: "Plaignant", fields: [
+        { id: "plaignant_last_name", label: "Nom" },
+        { id: "plaignant_first_name", label: "Prénom" },
+        { id: "plaignant_rank", label: "Grade" },
+        { id: "plaignant_affectation", label: "Affectation" },
+      ] },
+      { step: 1, label: "Mis en cause", fields: [
+        { id: "concerne_last_name", label: "Nom" },
+        { id: "concerne_first_name", label: "Prénom" },
+        { id: "concerne_rank", label: "Grade" },
+        { id: "concerne_affectation", label: "Affectation" },
+      ] },
+      { step: 2, label: "Circonstances de l'incident", fields: [
+        { id: "event_date", label: "Date" },
+        { id: "event_hour", label: "Heure" },
+        { id: "location", label: "Lieu" },
+      ] },
+      { step: 3, label: "Exposé des faits", fields: [
+        { id: "description", label: "Description", long: true },
+      ] },
+      { step: 4, label: "Témoins de l'incident", fields: [
+        { id: "witness", label: "Témoins", emptyText: "Aucun renseigné" },
+      ] },
+      { step: 5, label: "Preuves", fields: [
+        { id: "proof", label: "Liens", emptyText: "Aucun lien renseigné", long: true },
+      ], filesId: "proof_files" },
+    ];
+
+    const escapeHtml = (str) =>
+      String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+
+    const renderSummary = () => {
+      if (!summaryEl) return;
+      summaryEl.innerHTML = SUMMARY_SECTIONS.map((section) => {
+        const rows = section.fields.map((f) => {
+          const el = document.getElementById(f.id);
+          let value = el ? el.value.trim() : "";
+          if (!value) {
+            value = f.emptyText || "Non renseigné";
+          } else if (f.long && value.length > 160) {
+            value = `${value.slice(0, 160)}…`;
+          }
+          return `<div class="wizard-summary__row"><span class="wizard-summary__label">${escapeHtml(f.label)}</span><span class="wizard-summary__value">${escapeHtml(value)}</span></div>`;
+        }).join("");
+
+        let filesRow = "";
+        if (section.filesId) {
+          const filesEl = document.getElementById(section.filesId);
+          const count = filesEl && filesEl.files ? filesEl.files.length : 0;
+          filesRow = `<div class="wizard-summary__row"><span class="wizard-summary__label">Fichiers joints</span><span class="wizard-summary__value">${count ? `${count} fichier(s)` : "Aucun"}</span></div>`;
+        }
+
+        return `
+          <div class="wizard-summary__section">
+            <div class="wizard-summary__section-header">
+              <h3>${escapeHtml(section.label)}</h3>
+              <button type="button" class="btn-ghost btn-sm" data-summary-edit="${section.step}">Modifier</button>
+            </div>
+            ${rows}${filesRow}
+          </div>`;
+      }).join("");
+
+      summaryEl.querySelectorAll("[data-summary-edit]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          navigateToStep(parseInt(btn.dataset.summaryEdit, 10));
+        });
+      });
+    };
+
     const updateProgress = () => {
-      const percent = ((currentIndex + 1) / steps.length) * 100;
+      const percent = steps.length > 1 ? (currentIndex / (steps.length - 1)) * 100 : 100;
       if (progressFill) progressFill.style.width = `${percent}%`;
       if (progressLabel) {
         const title = steps[currentIndex].dataset.title || "";
         progressLabel.textContent = `Étape ${currentIndex + 1} / ${steps.length} — ${title}`;
       }
+    };
+
+    const renderDots = () => {
+      if (!progressDots) return;
+      progressDots.innerHTML = "";
+      steps.forEach((step, i) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "wizard-progress__dot";
+        if (i === currentIndex) dot.classList.add("is-current");
+        if (i < currentIndex) dot.classList.add("is-completed");
+        const reachable = i <= furthestVisited;
+        dot.disabled = !reachable;
+        dot.title = step.dataset.title || `Étape ${i + 1}`;
+        dot.setAttribute("aria-label", `Aller à l'étape ${i + 1} : ${dot.title}`);
+        if (reachable) {
+          dot.addEventListener("click", () => navigateToStep(i));
+        }
+        progressDots.appendChild(dot);
+      });
     };
 
     // On ne valide "à la main" que les champs marqués required — la
@@ -654,10 +755,11 @@
       return true;
     };
 
-    const goToStep = (targetIndex, direction) => {
+    const goToStep = (targetIndex) => {
       if (isAnimating || targetIndex < 0 || targetIndex >= steps.length || targetIndex === currentIndex) return;
       isAnimating = true;
 
+      const direction = targetIndex > currentIndex ? "next" : "prev";
       const outgoing = steps[currentIndex];
       const incoming = steps[targetIndex];
       const exitClass = direction === "next" ? "is-exiting-forward" : "is-exiting-back";
@@ -669,6 +771,7 @@
       window.setTimeout(() => {
         outgoing.classList.remove("is-active", exitClass);
         incoming.classList.add("is-active", enterClass);
+        if (incoming.hasAttribute("data-wizard-recap")) renderSummary();
         window.setTimeout(() => {
           incoming.classList.remove(enterClass);
           isAnimating = false;
@@ -676,21 +779,29 @@
       }, ANIMATION_MS);
 
       currentIndex = targetIndex;
+      furthestVisited = Math.max(furthestVisited, targetIndex);
       updateProgress();
+      renderDots();
     };
+
+    // Navigation "libre" (points de progression, liens "Modifier" du
+    // récapitulatif) : pas de validation à re-passer, puisqu'on ne peut
+    // cibler qu'une étape déjà atteinte (voir reachable dans renderDots).
+    const navigateToStep = (targetIndex) => goToStep(targetIndex);
 
     steps.forEach((step, index) => {
       step.classList.toggle("is-active", index === 0);
       step.querySelector("[data-wizard-next]")?.addEventListener("click", () => {
         if (!validateStep(step)) return;
-        goToStep(index + 1, "next");
+        goToStep(index + 1);
       });
       step.querySelector("[data-wizard-prev]")?.addEventListener("click", () => {
-        goToStep(index - 1, "prev");
+        goToStep(index - 1);
       });
     });
 
     updateProgress();
+    renderDots();
   }
 
   // ── Mentions "@Nom" dans les messages internes (échanges + réponse) ──
