@@ -182,6 +182,48 @@ def archives():
     )
 
 
+def _resolve_chat_display_data(conversations, owner_user, tiers_users):
+    """Résout les avatars, noms, et infobulles "Vu par ..." pour un
+    ensemble de conversations déjà construites (conversations_for) —
+    factorisé pour être utilisé à la fois par la page complète (detail)
+    et par le rafraîchissement automatique en arrière-plan (fragment),
+    sans dupliquer cette logique."""
+    known_people = {owner_user.id: owner_user} if owner_user else {}
+    known_people.update({u.id: u for u in tiers_users})
+    author_avatars = {uid: u.avatar_url for uid, u in known_people.items()}
+    people_names = {uid: u.name for uid, u in known_people.items()}
+
+    relevant_ids = set()
+    for conv in conversations:
+        for m in conv["messages"]:
+            if m["author_id"] is not None:
+                relevant_ids.add(m["author_id"])
+            relevant_ids.update(s["user_id"] for s in m.get("seen_by") or [])
+    unknown_ids = relevant_ids - set(known_people.keys())
+    for uid in unknown_ids:
+        person = User.get(uid)
+        author_avatars[uid] = person.avatar_url if person else None
+        people_names[uid] = person.name if person else "Utilisateur supprimé"
+
+    for conv in conversations:
+        for m in conv["messages"]:
+            seen_by = m.get("seen_by") or []
+            if not seen_by:
+                m["seen_tooltip"] = None
+                continue
+            names = [people_names.get(s["user_id"], "quelqu'un") for s in seen_by]
+            if len(names) == 1:
+                names_text = names[0]
+            elif len(names) == 2:
+                names_text = f"{names[0]} et {names[1]}"
+            else:
+                names_text = f"{', '.join(names[:-1])} et {names[-1]}"
+            first_seen_time = format_utc(seen_by[0]["seen_at"], "%Hh%M")
+            m["seen_tooltip"] = f"Vu par {names_text} à {first_seen_time}"
+
+    return author_avatars
+
+
 @bp.route("/dossier/<int:rapport_id>", methods=["GET", "POST"])
 @login_required
 def detail(rapport_id):
@@ -243,44 +285,10 @@ def detail(rapport_id):
     # Avatars ET noms des auteurs de messages ET des personnes ayant "vu"
     # un message (pas forcément les mêmes : quelqu'un peut avoir tout lu
     # sans jamais avoir écrit) — une seule recherche par personne
-    # distincte, pas par message. La commission a déjà owner_user et
-    # tiers_users sous la main, donc pas besoin de re-chercher pour eux.
-    known_people = {rapport.owner_id: owner_user} if owner_user else {}
-    known_people.update({u.id: u for u in tiers_users})
-    author_avatars = {uid: u.avatar_url for uid, u in known_people.items()}
-    people_names = {uid: u.name for uid, u in known_people.items()}
-
-    relevant_ids = set()
-    for conv in conversations:
-        for m in conv["messages"]:
-            if m["author_id"] is not None:
-                relevant_ids.add(m["author_id"])
-            relevant_ids.update(s["user_id"] for s in m.get("seen_by") or [])
-    unknown_ids = relevant_ids - set(known_people.keys())
-    for uid in unknown_ids:
-        person = User.get(uid)
-        author_avatars[uid] = person.avatar_url if person else None
-        people_names[uid] = person.name if person else "Utilisateur supprimé"
-
-    # Texte prêt à l'emploi pour l'infobulle au survol des flèches de vu :
-    # "Vu par Alice à 14h32" (ou "Vu par Alice et Bob à 14h32" si
-    # plusieurs, en gardant l'heure de la première personne à l'avoir vu —
-    # la plus proche de l'envoi, donc la plus parlante).
-    for conv in conversations:
-        for m in conv["messages"]:
-            seen_by = m.get("seen_by") or []
-            if not seen_by:
-                m["seen_tooltip"] = None
-                continue
-            names = [people_names.get(s["user_id"], "quelqu'un") for s in seen_by]
-            if len(names) == 1:
-                names_text = names[0]
-            elif len(names) == 2:
-                names_text = f"{names[0]} et {names[1]}"
-            else:
-                names_text = f"{', '.join(names[:-1])} et {names[-1]}"
-            first_seen_time = format_utc(seen_by[0]["seen_at"], "%Hh%M")
-            m["seen_tooltip"] = f"Vu par {names_text} à {first_seen_time}"
+    # distincte, pas par message. Ainsi que le texte des infobulles "Vu
+    # par ...". Factorisé (voir _resolve_chat_display_data) pour être
+    # réutilisé par le rafraîchissement automatique en arrière-plan.
+    author_avatars = _resolve_chat_display_data(conversations, owner_user, tiers_users)
 
     # Fils de discussion réellement autorisés pour CETTE personne — sert de
     # liste blanche stricte pour valider le champ "thread" soumis, afin
@@ -631,6 +639,59 @@ def piece_jointe(rapport_id, attachment_id):
         mimetype=content_type or "application/octet-stream",
         headers={"Content-Disposition": f'{disposition}; filename="{display_name}"'},
     )
+
+
+@bp.route("/dossier/<int:rapport_id>/fil/<thread_key>/fragment")
+@login_required
+def echanges_fragment(rapport_id, thread_key):
+    """Renvoie juste les messages d'UN fil précis, en HTML, pour le
+    rafraîchissement automatique en arrière-plan de l'onglet Échanges
+    (sans recharger toute la page) : nouveaux messages, badge "Nouveau"
+    qui disparaît, flèches de vu qui passent au doré — tout ça sans que
+    personne n'ait besoin de rafraîchir manuellement.
+
+    Marque aussi ce fil comme lu pour la personne qui consulte : si son
+    navigateur va chercher ce fragment, c'est qu'elle est en train de
+    regarder l'écran."""
+    rapport = Rapport.get(rapport_id)
+    if rapport is None:
+        abort(404)
+    rapport.ensure_message_ids()
+
+    is_owner = rapport.owner_id == current_user.id
+    is_tiers = current_user.id in rapport.tiers_ids
+    is_ceam_member = current_user.role >= User.ROLE_MEMBRE_CEAM
+    if not is_owner and not is_tiers and not is_ceam_member:
+        abort(403)
+    if rapport.archived and not is_ceam_member:
+        abort(403)
+
+    owner_user = User.get(rapport.owner_id)
+    tiers_users = [u for u in (User.get(uid) for uid in rapport.tiers_ids) if u is not None]
+
+    # Liste blanche stricte des fils accessibles à CETTE personne — la
+    # même que pour l'envoi de message : jamais exposer le contenu d'un
+    # fil privé auquel elle n'a pas droit, même via cette route annexe.
+    if is_ceam_member:
+        allowed_keys = {"everyone"}
+        if owner_user is not None:
+            allowed_keys.add(str(owner_user.id))
+        allowed_keys.update(str(u.id) for u in tiers_users)
+    else:
+        allowed_keys = {"everyone", str(current_user.id)}
+    if thread_key not in allowed_keys:
+        abort(403)
+
+    conversations = rapport.conversations_for(current_user.id, is_ceam_member, owner_user, tiers_users)
+    author_avatars = _resolve_chat_display_data(conversations, owner_user, tiers_users)
+    rapport.mark_messages_read(current_user.id, is_ceam_member)
+
+    matching_key = "everyone" if thread_key == "everyone" else int(thread_key)
+    conv = next((c for c in conversations if c["key"] == matching_key), None)
+    if conv is None:
+        abort(404)
+
+    return render_template("ceam/_chat_messages.html", conv=conv, rapport=rapport, author_avatars=author_avatars)
 
 
 @bp.route("/notifications")

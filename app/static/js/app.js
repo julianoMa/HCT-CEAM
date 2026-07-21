@@ -795,4 +795,70 @@
       deleteForm.submit();
     });
   }
+
+  // ── Rafraîchissement automatique du fil actif (sans recharger la page) ──
+  // Revérifie régulièrement s'il y a du nouveau sur la conversation
+  // affichée : un message qui vient d'arriver, le badge "Nouveau" qui
+  // doit disparaître une fois lu, les flèches de vu qui passent au doré
+  // dès que l'autre personne a ouvert le message — tout ça sans que
+  // personne n'ait besoin de rafraîchir la page (ni de vider son cache :
+  // ce sont des données fraîches à chaque appel, jamais mises en cache).
+  if (chatPanel && conversationPanels.length) {
+    const rapportId = chatPanel.dataset.rapportId;
+    let isRefreshing = false;
+
+    const isNearBottom = (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+
+    const refreshActiveConversation = async () => {
+      // Pas de sondage si l'onglet du navigateur est en arrière-plan
+      // (économise des requêtes inutiles), ou si un rafraîchissement est
+      // déjà en cours (évite d'empiler les appels si le réseau est lent).
+      if (isRefreshing || document.hidden || !rapportId) return;
+      // Ne pas remplacer le contenu pendant qu'un menu contextuel ou le
+      // modal d'édition sont ouverts sur ce fil -- ça casserait la cible
+      // du clic droit en cours (l'élément DOM visé disparaîtrait).
+      const contextMenuOpen = contextMenu && !contextMenu.hidden;
+      const editModalOpen = document.getElementById("edit-message-modal")?.classList.contains("is-visible");
+      if (contextMenuOpen || editModalOpen) return;
+      const activePanel = document.querySelector("[data-conversation-panel].is-active");
+      if (!activePanel) return;
+      const threadKey = activePanel.dataset.conversationPanel;
+      const messagesArea = activePanel.querySelector("[data-chat-scroll]");
+      if (!threadKey || !messagesArea) return;
+
+      isRefreshing = true;
+      try {
+        const wasNearBottom = isNearBottom(messagesArea);
+        const resp = await fetch(`/ceam/dossier/${rapportId}/fil/${encodeURIComponent(threadKey)}/fragment`);
+        if (resp.ok) {
+          const html = await resp.text();
+          // Ne toucher au DOM que si le contenu a réellement changé --
+          // évite de perturber une sélection de texte ou une interaction
+          // en cours pour rien à chaque sondage.
+          if (html !== messagesArea.dataset.lastHtml) {
+            messagesArea.innerHTML = html;
+            messagesArea.dataset.lastHtml = html;
+            if (wasNearBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
+          }
+        }
+      } catch (e) {
+        // Silencieux : un souci réseau ponctuel ne doit jamais gêner la
+        // navigation, le prochain sondage réessaiera de lui-même.
+      } finally {
+        isRefreshing = false;
+      }
+    };
+
+    setInterval(refreshActiveConversation, 4000);
+    // Revenir sur l'onglet du navigateur déclenche aussi un rafraîchissement
+    // immédiat, sans attendre le prochain cycle de 4 secondes.
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshActiveConversation();
+    });
+    // Changer de conversation rafraîchit aussi immédiatement celle qui
+    // vient de s'ouvrir, sans attendre.
+    conversationTriggers.forEach((btn) => {
+      btn.addEventListener("click", () => setTimeout(refreshActiveConversation, 300));
+    });
+  }
 })();
