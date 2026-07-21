@@ -292,7 +292,7 @@ class Rapport:
             thread_key = "everyone" if key == "everyone" else str(key)
             last_read_ts = (self.last_read.get(thread_key) or {}).get(user_key, "")
             other_last_reads = [
-                ts for uid, ts in (self.last_read.get(thread_key) or {}).items() if uid != user_key
+                (uid, ts) for uid, ts in (self.last_read.get(thread_key) or {}).items() if uid != user_key
             ]
             if key == "everyone":
                 messages = [m for m in all_messages if m["visibility"] == "everyone"]
@@ -307,11 +307,23 @@ class Rapport:
                 # sur MES PROPRES messages — vu = au moins une autre
                 # personne ayant accès à ce fil a lu jusqu'à ce message ou
                 # plus tard (pas besoin que TOUT LE MONDE l'ait lu, une
-                # commission peut avoir plusieurs membres).
+                # commission peut avoir plusieurs membres). `seen_by`
+                # garde le détail (qui, à quel moment) pour l'infobulle au
+                # survol, trié du premier au dernier à l'avoir vu.
                 if m["author_id"] == user_id:
-                    m["is_seen"] = any(ts >= m["sent_at_raw"] for ts in other_last_reads)
+                    seen_by = sorted(
+                        (
+                            {"user_id": int(uid), "seen_at": ts}
+                            for uid, ts in other_last_reads
+                            if ts >= m["sent_at_raw"]
+                        ),
+                        key=lambda s: s["seen_at"],
+                    )
+                    m["is_seen"] = bool(seen_by)
+                    m["seen_by"] = seen_by
                 else:
                     m["is_seen"] = None
+                    m["seen_by"] = []
             groups = _group_chat_messages(messages, group_gap_minutes)
             return {"key": key, "label": label, "messages": messages, "groups": groups, "unread_count": unread}
 

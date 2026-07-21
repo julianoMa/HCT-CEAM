@@ -11,6 +11,7 @@ from app.models.user import User
 from app.pdf_export import generate_dossier_pdf
 from app.permissions import requires_role
 from app.storage import fetch_attachment, upload_reponse_attachment, upload_reponse_attachments_bulk
+from app.timezone_utils import format_utc
 
 bp = Blueprint("ceam", __name__, url_prefix="/ceam")
 
@@ -239,20 +240,47 @@ def detail(rapport_id):
     conversations = rapport.conversations_for(current_user.id, is_ceam_member, owner_user, tiers_users)
     rapport.mark_messages_read(current_user.id, is_ceam_member)
 
-    # Avatars des auteurs des messages (une seule recherche par auteur
-    # distinct, pas par message) — la commission a déjà owner_user et
+    # Avatars ET noms des auteurs de messages ET des personnes ayant "vu"
+    # un message (pas forcément les mêmes : quelqu'un peut avoir tout lu
+    # sans jamais avoir écrit) — une seule recherche par personne
+    # distincte, pas par message. La commission a déjà owner_user et
     # tiers_users sous la main, donc pas besoin de re-chercher pour eux.
-    known_avatars = {rapport.owner_id: owner_user.avatar_url if owner_user else None}
-    known_avatars.update({u.id: u.avatar_url for u in tiers_users})
-    author_avatars = dict(known_avatars)
-    unknown_author_ids = {
-        m["author_id"]
-        for conv in conversations for m in conv["messages"]
-        if m["author_id"] is not None and m["author_id"] not in author_avatars
-    }
-    for uid in unknown_author_ids:
-        author = User.get(uid)
-        author_avatars[uid] = author.avatar_url if author else None
+    known_people = {rapport.owner_id: owner_user} if owner_user else {}
+    known_people.update({u.id: u for u in tiers_users})
+    author_avatars = {uid: u.avatar_url for uid, u in known_people.items()}
+    people_names = {uid: u.name for uid, u in known_people.items()}
+
+    relevant_ids = set()
+    for conv in conversations:
+        for m in conv["messages"]:
+            if m["author_id"] is not None:
+                relevant_ids.add(m["author_id"])
+            relevant_ids.update(s["user_id"] for s in m.get("seen_by") or [])
+    unknown_ids = relevant_ids - set(known_people.keys())
+    for uid in unknown_ids:
+        person = User.get(uid)
+        author_avatars[uid] = person.avatar_url if person else None
+        people_names[uid] = person.name if person else "Utilisateur supprimé"
+
+    # Texte prêt à l'emploi pour l'infobulle au survol des flèches de vu :
+    # "Vu par Alice à 14h32" (ou "Vu par Alice et Bob à 14h32" si
+    # plusieurs, en gardant l'heure de la première personne à l'avoir vu —
+    # la plus proche de l'envoi, donc la plus parlante).
+    for conv in conversations:
+        for m in conv["messages"]:
+            seen_by = m.get("seen_by") or []
+            if not seen_by:
+                m["seen_tooltip"] = None
+                continue
+            names = [people_names.get(s["user_id"], "quelqu'un") for s in seen_by]
+            if len(names) == 1:
+                names_text = names[0]
+            elif len(names) == 2:
+                names_text = f"{names[0]} et {names[1]}"
+            else:
+                names_text = f"{', '.join(names[:-1])} et {names[-1]}"
+            first_seen_time = format_utc(seen_by[0]["seen_at"], "%Hh%M")
+            m["seen_tooltip"] = f"Vu par {names_text} à {first_seen_time}"
 
     # Fils de discussion réellement autorisés pour CETTE personne — sert de
     # liste blanche stricte pour valider le champ "thread" soumis, afin

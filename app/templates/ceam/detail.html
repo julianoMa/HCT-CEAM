@@ -274,7 +274,7 @@
               <span class="chat-message__time">
                 {{ group.entries[-1].sent_at_time }}
                 {% if group.entries[-1].is_seen is not none %}
-                <svg width="15" height="10" viewBox="0 0 18 10" fill="none" class="chat-message__seen {{ 'is-seen' if group.entries[-1].is_seen }}" aria-label="{{ 'Vu' if group.entries[-1].is_seen else 'Envoyé' }}">
+                <svg width="15" height="10" viewBox="0 0 18 10" fill="none" class="chat-message__seen {{ 'is-seen' if group.entries[-1].is_seen }}" aria-label="{{ group.entries[-1].seen_tooltip or 'Envoyé' }}"><title>{{ group.entries[-1].seen_tooltip or 'Envoyé, pas encore vu' }}</title>
                   <path d="M1 5l3 3 5-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                   <path d="M8 5l3 3 6-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
