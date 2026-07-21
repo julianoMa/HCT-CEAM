@@ -831,7 +831,7 @@ class Rapport:
         self.set_messages_locked(True)
 
     def add_reponse(self, type_, content, author_name, author_rank, author_id=None, author_is_ceam=True,
-                    attachments=None, visibility="everyone"):
+                    attachments=None, visibility="everyone", audit_actor_name=None):
         """Ajoute un message à un fil de discussion du dossier (réponse
         officielle CEAM, ou message libre d'un déclarant/tiers/membre CEAM),
         le persiste, et notifie les personnes autorisées à le voir.
@@ -841,7 +841,13 @@ class Rapport:
         - un user_id (int) : le fil privé entre la commission et ce
           participant externe précis (déclarant ou tiers), peu importe
           lequel des deux écrit dans ce fil. La commission voit toujours
-          tous les fils (supervision complète du dossier)."""
+          tous les fils (supervision complète du dossier).
+
+        `audit_actor_name`, si fourni, est ce qui apparaît dans le Journal
+        d'activité (traçabilité interne — qui a réellement cliqué), alors
+        que `author_name` est ce qui s'affiche publiquement dans le
+        dossier (ex: "Commission CEAM" pour une réponse officielle, pas
+        le nom de la personne qui l'a rédigée)."""
         from app.models.audit_log import AuditLog  # import différé : évite un cycle d'import
         from app.models.notification import Notification  # idem
 
@@ -877,8 +883,8 @@ class Rapport:
         self._notifier_message(reponse, author_id, author_is_ceam)
         AuditLog.record(
             action=AuditLog.ACTION_REPONSE_ADD,
-            actor_name=author_name,
-            details=f"{author_name} ({author_rank}) a envoyé un message « {type_} » sur le dossier {self.reference}",
+            actor_name=audit_actor_name or author_name,
+            details=f"{audit_actor_name or author_name} a envoyé un message « {type_} » sur le dossier {self.reference}",
         )
         # L'accusé de réception automatique est déjà couvert par la
         # notification "Rapport envoyé" créée à la création du dossier —

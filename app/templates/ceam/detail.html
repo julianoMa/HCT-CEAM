@@ -197,19 +197,23 @@
           {% endif %}
           {% set is_mine = (group.author_id == current_user.id) %}
           <div class="chat-message {{ 'chat-message--mine' if is_mine }}">
-            <div class="chat-message__avatar">
+            <div class="chat-message__avatar {{ 'chat-message__avatar--logo' if group.author_id is none }}">
+              {% if group.author_id is none %}
+              <img src="https://www.zupimages.net/up/22/30/as83.png" alt="Commission CEAM" class="chat-message__avatar-logo">
+              {% else %}
               {% set avatar_url = author_avatars.get(group.author_id) %}
               {% if avatar_url %}
               <img src="{{ avatar_url }}" alt="{{ group.author_name }}" referrerpolicy="no-referrer">
               {% else %}
               <span>{{ (group.author_name[0] | upper) if group.author_name else "?" }}</span>
               {% endif %}
+              {% endif %}
             </div>
             {% set total_length = group.entries | map(attribute='content') | join | length %}
               <div class="chat-message__bubble {% if total_length < 25 %}chat-message__bubble--short{% else %}chat-message__bubble--long{% endif %}">
               <div class="chat-message__header">
                 <span class="chat-message__author">{{ group.author_name }}</span>
-                <span class="chat-message__rank">{{ group.author_rank }}</span>
+                {% if group.author_rank %}<span class="chat-message__rank">{{ group.author_rank }}</span>{% endif %}
                 {% set first_entry = group.entries[0] %}
                 {% if first_entry.type_label and first_entry.type_label != "Message" %}
                   <span class="badge-type">{{ first_entry.type_label }}</span>

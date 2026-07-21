@@ -2624,6 +2624,17 @@ button.is-submitting,
   object-fit: cover;
 }
 
+.chat-message__avatar-logo {
+  object-fit: contain !important;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.chat-message__avatar--logo {
+  background: #ffffff;
+  border-radius: 8px;
+}
+
 .chat-message__bubble {
   width: 640px;
   max-width: 100%;

@@ -393,11 +393,12 @@ def detail(rapport_id):
             rapport.add_reponse(
                 type_=reponse_form.type.data,
                 content=reponse_form.content.data,
-                author_name=current_user.name,
-                author_rank=current_user.role_label,
-                author_id=current_user.id,
+                author_name="Commission CEAM",
+                author_rank="",
+                author_id=None,
                 author_is_ceam=True,
                 attachments=attachments,
+                audit_actor_name=f"{current_user.name} ({current_user.role_label})",
             )
             if rejected:
                 flash(
