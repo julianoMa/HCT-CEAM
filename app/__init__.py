@@ -28,13 +28,18 @@ def _compute_static_fingerprint(static_folder, filename):
 
 # Fichiers servis en version minifiée (commentaires/espaces retirés) au
 # lieu du fichier tel quel : {chemin sous static/: (type MIME, fonction de
-# minification)}. Calculée en mémoire à la première requête qui la
-# demande, puis mise en cache pour le reste du process — jamais écrite sur
-# disque, pour rester compatible avec un système de fichiers en lecture
-# seule à l'exécution (cas courant en hébergement serverless).
+# minification, mise en cache activée ou non)}. Le contenu minifié est
+# calculé en mémoire à la première requête qui le demande puis mis en
+# cache pour le reste du process — jamais écrit sur disque, pour rester
+# compatible avec un système de fichiers en lecture seule à l'exécution
+# (cas courant en hébergement serverless). Le CSS est volontairement
+# exclu de toute mise en cache (ni navigateur, ni process) : contrairement
+# au JS, il change fréquemment pendant le développement et doit toujours
+# refléter le fichier tel qu'il est sur disque, sans attendre un
+# redémarrage du serveur ni un vidage de cache navigateur.
 _MINIFIABLE_FILES = {
-    "css/style.css": ("text/css; charset=utf-8", rcssmin.cssmin),
-    "js/app.js": ("application/javascript; charset=utf-8", rjsmin.jsmin),
+    "css/style.css": ("text/css; charset=utf-8", rcssmin.cssmin, False),
+    "js/app.js": ("application/javascript; charset=utf-8", rjsmin.jsmin, True),
 }
 
 
@@ -90,22 +95,32 @@ def create_app(config_class=Config):
 
     minified_cache = {}
 
-    def _make_minified_view(filename, mimetype, minify_func):
+    def _make_minified_view(filename, mimetype, minify_func, cache):
         def view():
-            if filename not in minified_cache:
-                minified_cache[filename] = _compute_minified(app.static_folder, filename, minify_func)
-            resp = Response(minified_cache[filename], mimetype=mimetype)
-            resp.cache_control.public = True
-            resp.cache_control.max_age = app.config["SEND_FILE_MAX_AGE_DEFAULT"]
+            if cache:
+                if filename not in minified_cache:
+                    minified_cache[filename] = _compute_minified(app.static_folder, filename, minify_func)
+                content = minified_cache[filename]
+            else:
+                # Pas de cache serveur ici : on relit et re-minifie le
+                # fichier à chaque requête pour que les modifications de
+                # CSS soient visibles immédiatement.
+                content = _compute_minified(app.static_folder, filename, minify_func)
+            resp = Response(content, mimetype=mimetype)
+            if cache:
+                resp.cache_control.public = True
+                resp.cache_control.max_age = app.config["SEND_FILE_MAX_AGE_DEFAULT"]
+            else:
+                resp.cache_control.no_store = True
             return resp
         return view
 
-    for _filename, (_mimetype, _minify_func) in _MINIFIABLE_FILES.items():
+    for _filename, (_mimetype, _minify_func, _cache) in _MINIFIABLE_FILES.items():
         try:
             app.add_url_rule(
                 f"/static/{_filename}",
                 endpoint=f"minified__{_filename.replace('/', '_')}",
-                view_func=_make_minified_view(_filename, _mimetype, _minify_func),
+                view_func=_make_minified_view(_filename, _mimetype, _minify_func, _cache),
             )
         except Exception:  # noqa: BLE001 - au pire, Flask sert le fichier tel quel (route par défaut)
             app.logger.warning("Minification indisponible pour %s, fichier servi tel quel.", _filename)

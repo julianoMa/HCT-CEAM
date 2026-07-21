@@ -3008,9 +3008,6 @@ button.is-submitting,
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--surface);
-  padding: 10px 0 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .wizard-progress__track {
