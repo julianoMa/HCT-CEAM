@@ -81,7 +81,7 @@
         {% if current_user.role >= 1 %}
         <span class="sidebar__section-label">Commission</span>
         <a href="{{ url_for('ceam.suivi') }}" title="Suivi CEAM" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.suivi' }}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4"/></svg>
           <span class="sidebar__link-text">Suivi CEAM</span>
         </a>
         <a href="{{ url_for('ceam.archives') }}" title="Archives" class="sidebar__link {{ 'is-active' if request.endpoint == 'ceam.archives' }}">
@@ -145,6 +145,11 @@
       <div class="main__content">
         {% block content %}{% endblock %}
       </div>
+
+      <footer class="app-footer">
+        Fait avec <span class="app-footer__heart" aria-hidden="true">❤️</span> par
+        <a href="https://github.com/julianoMa/HCT-CEAM" target="_blank" rel="noopener noreferrer">Thefern</a>
+      </footer>
     </div>
   </div>
 
