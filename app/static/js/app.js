@@ -727,45 +727,53 @@
       targetItemElement = null;
     };
 
-    document.querySelectorAll(".chat-message__bubble").forEach((bubble) => {
-      bubble.addEventListener("contextmenu", (event) => {
-        // Le président CEAM / admin (canDeleteAny) peut faire un clic
-        // droit sur N'IMPORTE QUELLE carte, pas seulement les siennes —
-        // le serveur revérifie de toute façon le rôle réel avant
-        // d'accepter la suppression, ceci n'est que l'affichage du menu.
-        const isMine = !!bubble.closest(".chat-message--mine");
-        if (!isMine && !canDeleteAny) return; // pas notre carte, et pas de privilège
+    // Délégation d'événements sur `document` plutôt qu'un écouteur par
+    // carte : une carte insérée par le sondage automatique (qui remplace
+    // le contenu HTML toutes les quelques secondes, voir plus bas) n'a
+    // jamais eu l'occasion de recevoir un addEventListener individuel --
+    // avec la délégation, ce clic droit fonctionne quand même, puisque
+    // `document` est toujours là et qu'on cherche la carte concernée au
+    // moment du clic, pas à l'avance.
+    document.addEventListener("contextmenu", (event) => {
+      const bubble = event.target.closest(".chat-message__bubble");
+      if (!bubble) {
+        hideContextMenu();
+        return;
+      }
 
-        // Cible le message précis sous le curseur si le clic droit tombe
-        // dedans (utile quand plusieurs messages sont regroupés dans la
-        // même carte) ; sinon (survol de l'en-tête, d'un espace vide...),
-        // retombe sur le dernier message de la carte, le plus visible.
-        const items = bubble.querySelectorAll(".chat-message__item");
-        const clickedItem = event.target.closest(".chat-message__item");
-        const targetItem = clickedItem || items[items.length - 1];
-        const messageId = targetItem ? targetItem.dataset.messageId : null;
-        if (!messageId) return; // trop ancien pour être supprimable
+      // Le président CEAM / admin (canDeleteAny) peut faire un clic
+      // droit sur N'IMPORTE QUELLE carte, pas seulement les siennes —
+      // le serveur revérifie de toute façon le rôle réel avant
+      // d'accepter la suppression, ceci n'est que l'affichage du menu.
+      const isMine = !!bubble.closest(".chat-message--mine");
+      if (!isMine && !canDeleteAny) return; // pas notre carte, et pas de privilège
 
-        event.preventDefault();
-        targetMessageId = messageId;
-        targetItemElement = targetItem;
+      // Cible le message précis sous le curseur si le clic droit tombe
+      // dedans (utile quand plusieurs messages sont regroupés dans la
+      // même carte) ; sinon (survol de l'en-tête, d'un espace vide...),
+      // retombe sur le dernier message de la carte, le plus visible.
+      const items = bubble.querySelectorAll(".chat-message__item");
+      const clickedItem = event.target.closest(".chat-message__item");
+      const targetItem = clickedItem || items[items.length - 1];
+      const messageId = targetItem ? targetItem.dataset.messageId : null;
+      if (!messageId) return; // trop ancien pour être supprimable
 
-        const menuWidth = 180;
-        const menuHeight = 44;
-        let x = event.clientX;
-        let y = event.clientY;
-        if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
-        if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 8;
-        contextMenu.style.left = `${x}px`;
-        contextMenu.style.top = `${y}px`;
-        contextMenu.hidden = false;
-      });
+      event.preventDefault();
+      targetMessageId = messageId;
+      targetItemElement = targetItem;
+
+      const menuWidth = 180;
+      const menuHeight = 44;
+      let x = event.clientX;
+      let y = event.clientY;
+      if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 8;
+      if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 8;
+      contextMenu.style.left = `${x}px`;
+      contextMenu.style.top = `${y}px`;
+      contextMenu.hidden = false;
     });
 
     document.addEventListener("click", hideContextMenu);
-    document.addEventListener("contextmenu", (event) => {
-      if (!event.target.closest(".chat-message__bubble")) hideContextMenu();
-    });
     window.addEventListener("scroll", hideContextMenu, true);
     window.addEventListener("resize", hideContextMenu);
 
