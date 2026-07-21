@@ -1,4 +1,7 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+import secrets
+from datetime import datetime, timedelta
+
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, logout_user
 
 from app.models.audit_log import AuditLog
@@ -8,6 +11,9 @@ from app.permissions import requires_role
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 RESET_CONFIRMATION_PHRASE = "RÉINITIALISER"
+# Sans 0/O, 1/I/L : trop facilement confondus à l'oral ou sur un écran de
+# téléphone, quand on relit le code reçu par MP Discord pour le retaper.
+RESET_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 
 @bp.route("/utilisateurs")
@@ -105,18 +111,75 @@ def logs():
     )
 
 
-@bp.route("/reset-database", methods=["POST"])
+@bp.route("/reset-database/envoyer-code", methods=["POST"])
 @login_required
 @requires_role(User.ROLE_PRESIDENT_CEAM)
-def reset_database_confirm():
-    """Réinitialisation complète de la base (voir app/database_reset.py).
-    Double confirmation déjà faite côté interface (deux modals) ; ici, on
-    exige en plus une phrase de confirmation exacte comme dernier
-    garde-fou avant une action irréversible."""
+def reset_database_send_code():
+    """Première étape après la phrase de confirmation : génère un code à
+    5 caractères, l'envoie par MP Discord à la personne qui vient de
+    demander la réinitialisation, et le garde en session (jamais côté
+    client) le temps qu'elle le retape — un 3e garde-fou, hors du
+    navigateur, avant une action irréversible."""
     confirmation_phrase = request.form.get("confirmation_phrase", "").strip()
     if confirmation_phrase != RESET_CONFIRMATION_PHRASE:
         flash(
             "Phrase de confirmation incorrecte : la base de données n'a pas été modifiée.",
+            "danger",
+        )
+        return redirect(url_for("admin.logs"))
+
+    from app.notifications import send_discord_dm  # import différé : évite un cycle d'import
+
+    code = "".join(secrets.choice(RESET_CODE_ALPHABET) for _ in range(5))
+    session["reset_code"] = code
+    session["reset_code_expires_at"] = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+
+    sent = send_discord_dm(
+        current_user.discord_id,
+        content=(
+            f"🔐 Code de confirmation pour la réinitialisation de la base de données : **{code}**\n"
+            "Valable 10 minutes. Si tu n'es pas à l'origine de cette demande, ignore ce message "
+            "et ne partage ce code avec personne."
+        ),
+    )
+    if not sent:
+        session.pop("reset_code", None)
+        session.pop("reset_code_expires_at", None)
+        flash(
+            "Impossible d'envoyer le code de confirmation par MP Discord (vérifie que tes MP "
+            "sont ouverts). La base de données n'a pas été modifiée.",
+            "danger",
+        )
+        return redirect(url_for("admin.logs"))
+
+    return redirect(url_for("admin.logs", show_reset_code_modal=1))
+
+
+@bp.route("/reset-database/confirmer", methods=["POST"])
+@login_required
+@requires_role(User.ROLE_PRESIDENT_CEAM)
+def reset_database_confirm():
+    """Dernière étape : vérifie le code reçu par MP Discord (généré et
+    gardé en session par reset_database_send_code) avant d'effectuer la
+    réinitialisation elle-même."""
+    submitted_code = request.form.get("reset_code", "").strip().upper()
+    expected_code = session.get("reset_code")
+    expires_at = session.get("reset_code_expires_at")
+
+    session.pop("reset_code", None)
+    session.pop("reset_code_expires_at", None)
+
+    if not expected_code or not expires_at or datetime.utcnow().isoformat() > expires_at:
+        flash(
+            "Code de confirmation expiré ou manquant : recommence depuis le début. "
+            "La base de données n'a pas été modifiée.",
+            "danger",
+        )
+        return redirect(url_for("admin.logs"))
+
+    if submitted_code != expected_code:
+        flash(
+            "Code de confirmation incorrect : la base de données n'a pas été modifiée.",
             "danger",
         )
         return redirect(url_for("admin.logs"))

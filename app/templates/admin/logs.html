@@ -96,15 +96,47 @@
       <li>Le journal d'activité (y compris cette action elle-même, qui ne sera donc pas tracée)</li>
     </ul>
     <p class="prose" style="margin-bottom: 1.25rem;"><strong>Conservé :</strong> le règlement CEAM.</p>
-    <form method="post" action="{{ url_for('admin.reset_database_confirm') }}">
+    <form method="post" action="{{ url_for('admin.reset_database_send_code') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group" style="margin-bottom: 1.25rem;">
         <label>Tape <strong>RÉINITIALISER</strong> pour confirmer</label>
         <input type="text" name="confirmation_phrase" id="reset-confirmation-input" autocomplete="off">
       </div>
+      <p class="info-card__meta" style="margin-bottom: 1.25rem;">
+        Un code de confirmation à 5 caractères sera ensuite envoyé par MP Discord — la base
+        ne sera réinitialisée qu'après l'avoir retapé.
+      </p>
       <div class="modal__actions">
         <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
-        <button type="submit" class="btn-danger" id="reset-confirm-submit" disabled>Réinitialiser définitivement</button>
+        <button type="submit" class="btn-danger" id="reset-confirm-submit" disabled>Envoyer le code de confirmation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-confirm-3" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-3-title">
+    <h2 id="reset-confirm-3-title" class="modal__title">Dernière étape</h2>
+    <p class="prose" style="margin-bottom: 1.25rem;">
+      Un code à 5 caractères vient de t'être envoyé par MP Discord. Retape-le ici pour
+      réinitialiser définitivement la base de données. Le code expire dans 10 minutes.
+    </p>
+    <form method="post" action="{{ url_for('admin.reset_database_confirm') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label>Code reçu par MP Discord</label>
+        <input
+          type="text"
+          name="reset_code"
+          id="reset-code-input"
+          autocomplete="off"
+          maxlength="5"
+          style="text-transform: uppercase; letter-spacing: 0.2em; font-weight: 700; text-align: center;"
+        >
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn-secondary" data-close-modal>Annuler</button>
+        <button type="submit" class="btn-danger" id="reset-code-submit" disabled>Réinitialiser définitivement</button>
       </div>
     </form>
   </div>
@@ -118,6 +150,26 @@
       input.addEventListener("input", function () {
         submitBtn.disabled = input.value.trim() !== "RÉINITIALISER";
       });
+    }
+
+    var codeInput = document.getElementById("reset-code-input");
+    var codeSubmitBtn = document.getElementById("reset-code-submit");
+    if (codeInput && codeSubmitBtn) {
+      codeInput.addEventListener("input", function () {
+        codeInput.value = codeInput.value.toUpperCase();
+        codeSubmitBtn.disabled = codeInput.value.trim().length !== 5;
+      });
+    }
+
+    // Après l'envoi du code (redirection avec ?show_reset_code_modal=1),
+    // ouvrir directement le 3e modal plutôt que de laisser la personne le
+    // rechercher elle-même dans la page.
+    if (new URLSearchParams(window.location.search).get("show_reset_code_modal")) {
+      var codeModal = document.getElementById("reset-confirm-3");
+      if (codeModal) {
+        codeModal.classList.add("is-visible");
+        codeModal.setAttribute("aria-hidden", "false");
+      }
     }
   })();
 </script>
