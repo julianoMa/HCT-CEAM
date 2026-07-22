@@ -723,6 +723,7 @@
     const renderDots = () => {
       if (!progressDots) return;
       progressDots.innerHTML = "";
+      const lastIndex = steps.length - 1;
       steps.forEach((step, i) => {
         const dot = document.createElement("button");
         dot.type = "button";
@@ -733,6 +734,11 @@
         dot.disabled = !reachable;
         dot.title = step.dataset.title || `Étape ${i + 1}`;
         dot.setAttribute("aria-label", `Aller à l'étape ${i + 1} : ${dot.title}`);
+        // Même formule que updateProgress() pour le remplissage : le
+        // point de l'étape i est toujours exactement là où la barre
+        // s'arrête quand currentIndex === i.
+        const percent = lastIndex > 0 ? (i / lastIndex) * 100 : 0;
+        dot.style.left = `${percent}%`;
         if (reachable) {
           dot.addEventListener("click", () => navigateToStep(i));
         }

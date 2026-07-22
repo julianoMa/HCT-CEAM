@@ -3041,13 +3041,14 @@ button.is-submitting,
   left: 0;
   right: 0;
   transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   pointer-events: none;
 }
 
 .wizard-progress__dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
   pointer-events: auto;
   width: 14px;
   height: 14px;
@@ -3057,7 +3058,7 @@ button.is-submitting,
   background: var(--border);
   cursor: not-allowed;
   flex-shrink: 0;
-  transition: all var(--transition);
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
 .wizard-progress__dot:not(:disabled) {
@@ -3066,7 +3067,7 @@ button.is-submitting,
 
 .wizard-progress__dot:not(:disabled):hover {
   background: var(--accent-hover);
-  transform: scale(1.25);
+  transform: translate(-50%, -50%) scale(1.25);
 }
 
 .wizard-progress__dot.is-completed {
@@ -3075,7 +3076,8 @@ button.is-submitting,
 
 .wizard-progress__dot.is-current {
   background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  transform: translate(-50%, -50%) scale(1.35);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .wizard-steps {
