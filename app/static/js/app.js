@@ -119,6 +119,44 @@
     });
   });
 
+  // Changement de rôle (admin/utilisateurs) : jamais appliqué directement
+  // au clic sur "Mettre à jour" — on intercepte la soumission du
+  // formulaire pour demander confirmation avant d'envoyer réellement la
+  // requête, avec un ton plus appuyé (danger) pour les rôles les plus
+  // sensibles (Président CEAM, Administrateur). Un "changement" vers le
+  // rôle déjà actuel n'a rien de dangereux : on laisse passer sans
+  // interrompre, ça n'a de toute façon aucun effet côté serveur.
+  document.querySelectorAll("[data-role-change-form]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      const select = form.querySelector("select[name='role']");
+      if (!select || select.value === form.dataset.currentRole) return;
+
+      event.preventDefault();
+      // Empêche le handler anti-double-clic (plus bas dans ce fichier,
+      // sur tout formulaire POST) de désactiver quand même le bouton et
+      // d'afficher son spinner — la soumission réelle n'a pas encore eu
+      // lieu, seule la confirmation s'ouvre pour l'instant.
+      event.stopImmediatePropagation();
+      const userName = form.dataset.userName || "cet utilisateur";
+      const newRoleLabel = select.options[select.selectedIndex].textContent.trim();
+      const SENSITIVE_ROLES = ["2", "3"]; // Président CEAM, Administrateur
+      const isSensitive = SENSITIVE_ROLES.includes(select.value);
+
+      openConfirmModal({
+        form,
+        title: "Confirmer le changement de rôle",
+        text:
+          `Le rôle de ${userName} va être changé en « ${newRoleLabel} ». ` +
+          (isSensitive
+            ? "Ce rôle donne des permissions étendues sur la plateforme — "
+            : "") +
+          "Continuer ?",
+        confirmLabel: "Confirmer",
+        danger: isSensitive,
+      });
+    });
+  });
+
   // Le bouton "Clôturer le dossier" reste désactivé tant qu'aucun
   // classement n'est sélectionné (le rendu serveur ne gère que l'état
   // initial ; ceci couvre un changement de sélection sans rechargement).

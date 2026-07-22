@@ -42,7 +42,7 @@
             {% if u.id == current_user.id %}
             <span class="data-table__muted">Tu ne peux pas modifier ton propre rôle.</span>
             {% else %}
-            <form method="post" action="{{ url_for('admin.changer_role', user_id=u.id) }}" class="form-inline">
+            <form method="post" action="{{ url_for('admin.changer_role', user_id=u.id) }}" class="form-inline" data-role-change-form data-user-name="{{ u.name }}" data-current-role="{{ u.role }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="role">
                 {% for value, label in role_labels.items() %}
