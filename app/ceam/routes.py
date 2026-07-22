@@ -496,17 +496,21 @@ def detail(rapport_id):
 
     branch_statuses = {Rapport.STATUS_TRAITEMENT_SUSPENDU, Rapport.STATUS_NON_RECEVABLE}
     visited_status_values = {h["status_value"] for h in rapport.status_history_affichage}
-    # "Non recevable" est lui-même une décision finale : afficher "Décision
-    # rendue" (Clôturé) comme prochaine étape n'aurait pas de sens tant
-    # qu'elle n'a pas réellement été atteinte.
-    hide_cloture = (
+    # Un dossier qui a pris (ou prend actuellement) la branche "Non
+    # recevable" ne passera jamais par "Décision rendue" — qui suppose un
+    # examen complet — il va directement à "Clôturé" une fois classé. On
+    # retire donc cette étape du stepper plutôt que de l'afficher comme
+    # une étape à venir qui ne sera en réalité jamais atteinte ; "Clôturé"
+    # reste affiché normalement (comme pour n'importe quel autre dossier)
+    # et prend ainsi la place de "Décision rendue" dans la barre.
+    took_non_recevable_branch = (
         rapport.status == Rapport.STATUS_NON_RECEVABLE
-        and Rapport.STATUS_CLOTURE not in visited_status_values
+        or Rapport.STATUS_NON_RECEVABLE in visited_status_values
     )
     status_steps = [
         (value, label) for value, label in Rapport.STATUS_LABELS.items()
         if value not in branch_statuses or value == rapport.status or value in visited_status_values
-        if not (value == Rapport.STATUS_CLOTURE and hide_cloture)
+        if not (value == Rapport.STATUS_DECISION_RENDUE and took_non_recevable_branch)
     ]
 
     # Thème de couleur unique pour toute la barre, selon le statut ACTUEL
