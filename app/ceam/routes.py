@@ -289,6 +289,19 @@ def detail(rapport_id):
     conversations = rapport.conversations_for(current_user.id, is_ceam_member, owner_user, tiers_users)
     rapport.mark_messages_read(current_user.id, is_ceam_member)
 
+    # Historique des réponses officielles (onglet Rapport) : tout ce qui
+    # n'est pas un message libre de l'onglet Échanges — réponses envoyées
+    # via le formulaire "Réponse officielle" (type librement choisi par la
+    # commission) et l'accusé de réception automatique. On repart de
+    # visible_reponses (pas reponses_affichage brut) pour respecter la
+    # confidentialité par fil, même si en pratique ces réponses sont
+    # toujours envoyées sur le fil général. Plus récent en premier.
+    reponses_officielles = [
+        r for r in rapport.visible_reponses(current_user.id, is_ceam_member)
+        if r["type_label"] != "Message"
+    ]
+    reponses_officielles.reverse()
+
     # Avatars ET noms des auteurs de messages ET des personnes ayant "vu"
     # un message (pas forcément les mêmes : quelqu'un peut avoir tout lu
     # sans jamais avoir écrit) — une seule recherche par personne
@@ -531,6 +544,7 @@ def detail(rapport_id):
         available_users=available_users,
         ceam_members_mentionable=ceam_members_mentionable,
         ceam_member_names=ceam_member_names,
+        reponses_officielles=reponses_officielles,
         status_steps=status_steps,
         branch_statuses=branch_statuses,
         stepper_theme=stepper_theme,

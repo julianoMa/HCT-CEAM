@@ -151,6 +151,51 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
     Déposé le {{ rapport.send_date_fr }}
   </div>
+
+  {% if reponses_officielles %}
+  <div class="card card--padded" style="margin-top: 1rem;">
+    <p class="prose-label" style="margin-bottom: 1rem;">Historique des réponses officielles</p>
+    <div class="reponse-list">
+      {% for r in reponses_officielles %}
+      <div class="reponse-item">
+        <div class="reponse-item__header">
+          <span class="badge-type">{{ r.type_label }}</span>
+          <span class="reponse-item__meta">{{ r.sent_at_fr }}</span>
+        </div>
+        <div class="prose prose--clear rich-text">{{ r.content | rich_text }}</div>
+        {% if r.attachments %}
+        <div class="reponse-attachments">
+          {% for a in r.attachments %}
+          <button
+            type="button"
+            class="attachment-card"
+            data-preview-url="{{ url_for('ceam.piece_jointe', rapport_id=rapport.id, attachment_id=a.attachment_id, name=a.name) }}"
+            data-preview-type="{{ 'pdf' if a.content_type == 'application/pdf' else 'image' if a.content_type.startswith('image/') else 'autre' }}"
+            data-preview-name="{{ a.name }}"
+          >
+            <div class="attachment-card__icon">
+              {% if a.content_type == 'application/pdf' %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+              {% else %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              {% endif %}
+            </div>
+            <div class="attachment-card__info">
+              <span class="attachment-card__name">{{ a.name }}</span>
+              <span class="attachment-card__meta">
+                {{ "PDF" if a.content_type == "application/pdf" else "Image" }}
+                {% if a.size %}· {{ (a.size / 1024) | round(0, 'ceil') | int }} Ko{% endif %}
+              </span>
+            </div>
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- ══════════════════════ ONGLET 2 : ÉCHANGES ══════════════════════ -->
