@@ -842,6 +842,11 @@ a:hover { color: var(--accent-hover); }
 .status-5 { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); } /* Décision rendue */
 .status-6 { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); } /* Clôturé */
 
+.role-0 { background: #e2e8f0; color: #334155; border-color: #cbd5e1; } /* Déclarant */
+.role-1 { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); } /* Membre CEAM */
+.role-2 { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); } /* Président CEAM */
+.role-3 { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); } /* Administrateur */
+
 /* ── Filters ── */
 
 /* ── Recherche ── */

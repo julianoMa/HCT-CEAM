@@ -37,7 +37,7 @@
             {% if u.id == current_user.id %}<span class="data-table__muted">(toi)</span>{% endif %}
           </td>
           <td><code class="data-table__muted">{{ u.discord_id }}</code></td>
-          <td>{{ u.role_label }}</td>
+          <td><span class="badge-status role-{{ u.role }}">{{ u.role_label }}</span></td>
           <td>
             {% if u.id == current_user.id %}
             <span class="data-table__muted">Tu ne peux pas modifier ton propre rôle.</span>
