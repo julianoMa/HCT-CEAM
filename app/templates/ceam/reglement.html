@@ -25,12 +25,13 @@
     <div class="form-section">
       <h2 class="form-section__title">Éditer le règlement</h2>
       <p class="info-card__meta" style="margin-bottom: 0.75rem;">
-        Utilise <code>{{ "#" }} Titre de section</code> pour démarrer une section, et
-        <code>{{ "##" }} Titre d'article</code> pour démarrer un article à l'intérieur.
-        Tout le texte qui suit devient le contenu de cet article, jusqu'au prochain <code>{{ "#" }}</code> ou <code>{{ "##" }}</code>.
+        Utilise <code>{{ "#" }} Titre de chapitre</code> pour démarrer un chapitre,
+        <code>{{ "##" }} Titre de section</code> pour démarrer une section à l'intérieur, et
+        <code>{{ "###" }} Titre d'article</code> pour démarrer un article à l'intérieur de la section.
+        Tout le texte qui suit devient le contenu de cet article, jusqu'au prochain <code>{{ "#" }}</code>, <code>{{ "##" }}</code> ou <code>{{ "###" }}</code>.
       </p>
       <div class="form-group">
-        {{ form.content(rows=20, placeholder="# Section 1 : Dispositions générales\n## Article 1 : Objet\nLe présent règlement a pour objet de…\n\n## Article 2 : Champ d'application\nIl s'applique à…") }}
+        {{ form.content(rows=20, placeholder="# Chapitre 1 : Dispositions générales\n## Section 1 : Objet et champ d'application\n### Article 1 : Objet\nLe présent règlement a pour objet de…\n\n### Article 2 : Champ d'application\nIl s'applique à…") }}
       </div>
     </div>
     <div class="form-actions">
@@ -47,33 +48,48 @@
 </div>
 {% endif %}
 
-{% if reglement.sections %}
+{% if reglement.chapitres %}
 <div class="card card--padded reglement-toc" style="margin-bottom: 1.25rem;" data-reveal>
   <h2 class="card__title" style="margin: 0 0 1.25rem;">Sommaire</h2>
   <nav class="reglement-toc__list">
-    {% for section in reglement.sections %}
-    {% set section_idx = loop.index %}
-    <div class="reglement-toc__section">
-      {% if section.title %}
-      <a href="#reglement-section-{{ section_idx }}" class="reglement-toc__section-link">{{ section.title }}</a>
+    {% for chapitre in reglement.chapitres %}
+    {% set chapitre_idx = loop.index %}
+    <div class="reglement-toc__chapitre">
+      {% if chapitre.title %}
+      <a href="#reglement-chapitre-{{ chapitre_idx }}" class="reglement-toc__chapitre-link">{{ chapitre.title }}</a>
       {% endif %}
-      {% for article in section.articles %}
-      <a href="#reglement-article-{{ section_idx }}-{{ loop.index }}" class="reglement-toc__article-link">{{ article.title }}</a>
+      {% for section in chapitre.sections %}
+      {% set section_idx = loop.index %}
+      <div class="reglement-toc__section">
+        {% if section.title %}
+        <a href="#reglement-section-{{ chapitre_idx }}-{{ section_idx }}" class="reglement-toc__section-link">{{ section.title }}</a>
+        {% endif %}
+        {% for article in section.articles %}
+        <a href="#reglement-article-{{ chapitre_idx }}-{{ section_idx }}-{{ loop.index }}" class="reglement-toc__article-link">{{ article.title }}</a>
+        {% endfor %}
+      </div>
       {% endfor %}
     </div>
     {% endfor %}
   </nav>
 </div>
 
-{% for section in reglement.sections %}
-{% set section_idx = loop.index %}
-<div class="card card--padded reglement-section" style="margin-bottom: 1.25rem;" id="reglement-section-{{ section_idx }}" data-reveal>
-  {% if section.title %}<h2 class="card__title" style="margin: 0 0 1.25rem;">{{ section.title }}</h2>{% endif %}
-  {% for article in section.articles %}
-  {% if not loop.first %}<hr class="reglement-divider">{% endif %}
-  <div class="reglement-article" id="reglement-article-{{ section_idx }}-{{ loop.index }}">
-    <h3 class="reglement-article__title">{{ article.title }}</h3>
-    <div class="prose rich-text">{{ article.content | rich_text }}</div>
+{% for chapitre in reglement.chapitres %}
+{% set chapitre_idx = loop.index %}
+<div class="card card--padded reglement-chapitre" style="margin-bottom: 1.25rem;" id="reglement-chapitre-{{ chapitre_idx }}" data-reveal>
+  {% if chapitre.title %}<h2 class="card__title" style="margin: 0 0 1.25rem;">{{ chapitre.title }}</h2>{% endif %}
+  {% for section in chapitre.sections %}
+  {% set section_idx = loop.index %}
+  {% if not loop.first %}<hr class="reglement-divider reglement-divider--section">{% endif %}
+  <div class="reglement-section" id="reglement-section-{{ chapitre_idx }}-{{ section_idx }}">
+    {% if section.title %}<h3 class="reglement-section__title">{{ section.title }}</h3>{% endif %}
+    {% for article in section.articles %}
+    {% if not loop.first %}<hr class="reglement-divider">{% endif %}
+    <div class="reglement-article" id="reglement-article-{{ chapitre_idx }}-{{ section_idx }}-{{ loop.index }}">
+      <h4 class="reglement-article__title">{{ article.title }}</h4>
+      <div class="prose rich-text">{{ article.content | rich_text }}</div>
+    </div>
+    {% endfor %}
   </div>
   {% endfor %}
 </div>

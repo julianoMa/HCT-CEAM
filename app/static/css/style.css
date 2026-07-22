@@ -1649,28 +1649,45 @@ body.sidebar-open {
   display: none !important;
 }
 
-/* ── Règlement (sections / articles) ── */
+/* ── Règlement (chapitres / sections / articles) ── */
+
+.reglement-chapitre {
+  scroll-margin-top: 80px;
+}
+
+.reglement-section {
+  scroll-margin-top: 80px;
+  padding: 0.75rem 0;
+}
+
+.reglement-section__title {
+  font-size: 15.5px;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: var(--text);
+}
 
 .reglement-article {
   padding: 0.5rem 0;
   scroll-margin-top: 80px;
 }
 
-.reglement-section {
-  scroll-margin-top: 80px;
-}
-
 .reglement-article__title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   margin: 0 0 0.5rem;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .reglement-divider {
   border: none;
   border-top: 1px solid var(--border-subtle);
   margin: 1rem 0;
+}
+
+.reglement-divider--section {
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
 }
 
 /* ── Sommaire du règlement (auto-généré, interactif) ── */
@@ -1685,31 +1702,48 @@ html {
   gap: 1.25rem;
 }
 
-.reglement-toc__section {
+.reglement-toc__chapitre {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   padding: 14px 16px;
   background: var(--border-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  flex: 1 1 220px;
+  flex: 1 1 260px;
   transition: transform var(--transition), border-color var(--transition);
 }
 
-.reglement-toc__section:hover {
+.reglement-toc__chapitre:hover {
   transform: translateY(-2px);
   border-color: var(--accent);
 }
 
-.reglement-toc__section-link {
-  font-size: 13px;
+.reglement-toc__chapitre-link {
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text);
   text-decoration: none;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
+}
+
+.reglement-toc__chapitre-link:hover {
+  color: var(--accent);
+}
+
+.reglement-toc__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reglement-toc__section-link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-decoration: none;
 }
 
 .reglement-toc__section-link:hover {
@@ -1717,7 +1751,7 @@ html {
 }
 
 .reglement-toc__article-link {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-secondary);
   text-decoration: none;
   padding-left: 10px;
@@ -2337,7 +2371,7 @@ button.is-submitting,
   .card,
   .info-card,
   .ceam-grid__item,
-  .reglement-toc__section,
+  .reglement-toc__chapitre,
   .attachment-card,
   .main__content {
     transition: none !important;

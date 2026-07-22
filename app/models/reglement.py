@@ -1,23 +1,30 @@
 """
 Règlement de la CEAM : un unique document Firestore, édité par un
-administrateur sous forme de texte structuré (sections / articles), et
-affiché sous forme de cartes.
+administrateur sous forme de texte structuré (chapitres / sections /
+articles), et affiché sous forme de cartes.
 
 Convention d'écriture (texte brut, pas besoin d'éditeur riche) :
-    # Titre de section       -> démarre une nouvelle section
-    ## Titre d'article       -> démarre un nouvel article dans la section courante
+    # Titre de chapitre      -> démarre un nouveau chapitre
+    ## Titre de section      -> démarre une nouvelle section dans le chapitre courant
+    ### Titre d'article      -> démarre un nouvel article dans la section courante
     (tout le reste)          -> contenu de l'article courant
 
 Exemple :
-    # Section 1 : Dispositions générales
-    ## Article 1 : Objet
+    # Chapitre 1 : Dispositions générales
+    ## Section 1 : Objet et champ d'application
+    ### Article 1 : Objet
     Le présent règlement a pour objet de...
 
-    ## Article 2 : Champ d'application
+    ### Article 2 : Champ d'application
     Il s'applique à...
 
-    # Section 2 : Procédure
-    ## Article 3 : Délai de dépôt
+    ## Section 2 : Définitions
+    ### Article 3 : Terminologie
+    ...
+
+    # Chapitre 2 : Procédure
+    ## Section 1 : Dépôt
+    ### Article 4 : Délai de dépôt
     ...
 """
 
@@ -29,8 +36,9 @@ from app.extensions import get_db
 COLLECTION = "config"
 DOCUMENT_ID = "reglement"
 
-_SECTION_RE = re.compile(r"^#\s+(.*)")
-_ARTICLE_RE = re.compile(r"^##\s+(.*)")
+_CHAPITRE_RE = re.compile(r"^#\s+(.*)")
+_SECTION_RE = re.compile(r"^##\s+(.*)")
+_ARTICLE_RE = re.compile(r"^###\s+(.*)")
 
 
 class Reglement:
@@ -50,57 +58,75 @@ class Reglement:
 
     @property
     def preambule(self):
-        """Texte libre tapé avant le premier '#' ou '##' — affiché avant le
-        sommaire, jamais inclus dedans (il n'a pas de titre)."""
+        """Texte libre tapé avant le premier '#', '##' ou '###' — affiché
+        avant le sommaire, jamais inclus dedans (il n'a pas de titre)."""
         lines = []
         for raw_line in self.content.splitlines():
             line = raw_line.rstrip()
-            if _SECTION_RE.match(line) or _ARTICLE_RE.match(line):
+            if _CHAPITRE_RE.match(line) or _SECTION_RE.match(line) or _ARTICLE_RE.match(line):
                 break
             lines.append(raw_line)
         return "\n".join(lines).strip()
 
     @property
-    def sections(self):
-        """Parse le texte brut en sections contenant leurs articles :
-        [{"title": str, "articles": [{"title": str, "content": str}, ...]}].
+    def chapitres(self):
+        """Parse le texte brut en chapitres contenant leurs sections, elles-
+        mêmes contenant leurs articles :
+        [{"title": str, "sections": [{"title": str, "articles": [{"title": str, "content": str}, ...]}, ...]}, ...].
         Le préambule (avant le premier titre) est exclu d'ici, voir la
         propriété `preambule` ci-dessus."""
-        sections = []
+        chapitres = []
+        current_chapitre = None
         current_section = None
         current_article = None
 
         for raw_line in self.content.splitlines():
             line = raw_line.rstrip()
 
+            chapitre_match = _CHAPITRE_RE.match(line)
             section_match = _SECTION_RE.match(line)
             article_match = _ARTICLE_RE.match(line)
 
+            if chapitre_match:
+                current_chapitre = {"title": chapitre_match.group(1).strip(), "sections": []}
+                chapitres.append(current_chapitre)
+                current_section = None
+                current_article = None
+                continue
+
             if section_match:
+                if current_chapitre is None:
+                    current_chapitre = {"title": "", "sections": []}
+                    chapitres.append(current_chapitre)
                 current_section = {"title": section_match.group(1).strip(), "articles": []}
-                sections.append(current_section)
+                current_chapitre["sections"].append(current_section)
                 current_article = None
                 continue
 
             if article_match:
+                if current_chapitre is None:
+                    current_chapitre = {"title": "", "sections": []}
+                    chapitres.append(current_chapitre)
                 if current_section is None:
                     current_section = {"title": "", "articles": []}
-                    sections.append(current_section)
+                    current_chapitre["sections"].append(current_section)
                 current_article = {"title": article_match.group(1).strip(), "content": ""}
                 current_section["articles"].append(current_article)
                 continue
 
             if current_article is not None:
                 current_article["content"] += raw_line + "\n"
-            # Texte tapé avant le premier article d'une section : ignoré à
-            # l'affichage, pour garder une convention simple (section = juste
-            # un titre qui regroupe des articles).
+            # Texte tapé avant le premier article d'un chapitre/section :
+            # ignoré à l'affichage, pour garder une convention simple
+            # (chapitre/section = juste un titre qui regroupe, le contenu
+            # vit toujours dans les articles).
 
-        for section in sections:
-            for article in section["articles"]:
-                article["content"] = article["content"].strip()
+        for chapitre in chapitres:
+            for section in chapitre["sections"]:
+                for article in section["articles"]:
+                    article["content"] = article["content"].strip()
 
-        return sections
+        return chapitres
 
     def to_dict(self):
         return {
